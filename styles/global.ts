@@ -838,14 +838,7 @@ export const componentStyles = StyleSheet.create({
     height: '100%',
     resizeMode: 'cover',
   },
-  loginSlideshowOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(99, 102, 241, 0.3)',
-  },
+  // Removed loginSlideshowOverlay - no longer needed
   loginSlideshowContent: {
     position: 'absolute',
     top: 0,

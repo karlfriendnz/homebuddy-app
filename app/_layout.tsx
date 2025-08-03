@@ -1,5 +1,5 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
-import { PostHogProvider } from 'posthog-react-native';
+import { PostHogProvider } from 'posthog-js/react';
 import { useEffect } from 'react';
 import { posthog } from '@/lib/posthog';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
@@ -14,10 +14,11 @@ function RootLayoutNav() {
     if (loading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const inTabsGroup = segments[0] === '(tabs)';
 
     if (!user && !inAuthGroup) {
       // User is not authenticated and not in auth group, redirect to login
-      router.replace('/login');
+      router.replace('/(auth)/login');
     } else if (user && inAuthGroup) {
       // User is authenticated but in auth group, check if they need to set up household
       if (segments[1] === 'verify-email') {
@@ -51,13 +52,27 @@ function RootLayoutNav() {
     }
   }, [user, loading, segments, router]);
 
-  if (!loaded || loading) {
-    // Show loading screen while fonts are loading or auth is checking
+  if (loading) {
+    // Show loading screen while auth is checking
+    return (
+      <Stack>
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      </Stack>
+    );
+  }
+
+  return (
+    <Stack>
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
   return (
-    <PostHogProvider client={posthog || undefined}>
+    <PostHogProvider client={posthog as any || undefined}>
       <AuthProvider>
         <RootLayoutNav />
       </AuthProvider>

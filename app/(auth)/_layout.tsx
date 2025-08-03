@@ -25,6 +25,13 @@ export default function AuthLayout() {
         }} 
       />
       <Stack.Screen 
+        name="onboarding/family-setup" 
+        options={{ 
+          title: 'Family Setup',
+          headerShown: false 
+        }} 
+      />
+      <Stack.Screen 
         name="verify-email" 
         options={{ 
           title: 'Verify Email',

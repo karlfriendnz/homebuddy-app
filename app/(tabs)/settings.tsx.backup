@@ -1,0 +1,244 @@
+import React from 'react';
+import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { componentStyles, colors, spacing } from '../../styles/global';
+import { useAuth } from '../../contexts/AuthContext';
+import { trackScreen } from '@/lib/posthog';
+
+interface SettingsItem {
+  id: string;
+  title: string;
+  subtitle?: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  onPress: () => void;
+  color?: string;
+}
+
+export default function SettingsScreen() {
+  const { user, signOut } = useAuth();
+
+  React.useEffect(() => {
+    trackScreen('Settings Screen');
+  }, []);
+
+  const handleSignOut = async () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            await signOut();
+            router.replace('/(auth)/login');
+          },
+        },
+      ]
+    );
+  };
+
+  const settingsItems: SettingsItem[] = [
+    {
+      id: 'household',
+      title: 'Household Settings',
+      subtitle: 'Manage your household and family members',
+      icon: 'people',
+      onPress: () => {
+        Alert.alert('Coming Soon', 'Household settings will be available soon!');
+      },
+    },
+    {
+      id: 'profile',
+      title: 'Profile Settings',
+      subtitle: 'Update your personal information',
+      icon: 'person',
+      onPress: () => {
+        Alert.alert('Coming Soon', 'Profile settings will be available soon!');
+      },
+    },
+    {
+      id: 'notifications',
+      title: 'Notifications',
+      subtitle: 'Manage your notification preferences',
+      icon: 'notifications',
+      onPress: () => {
+        Alert.alert('Coming Soon', 'Notification settings will be available soon!');
+      },
+    },
+    {
+      id: 'privacy',
+      title: 'Privacy & Security',
+      subtitle: 'Manage your privacy settings',
+      icon: 'shield-checkmark',
+      onPress: () => {
+        Alert.alert('Coming Soon', 'Privacy settings will be available soon!');
+      },
+    },
+    {
+      id: 'help',
+      title: 'Help & Support',
+      subtitle: 'Get help and contact support',
+      icon: 'help-circle',
+      onPress: () => {
+        Alert.alert('Coming Soon', 'Help & support will be available soon!');
+      },
+    },
+    {
+      id: 'about',
+      title: 'About HomeBuddy',
+      subtitle: 'Version 1.0.0',
+      icon: 'information-circle',
+      onPress: () => {
+        Alert.alert(
+          'About HomeBuddy',
+          'HomeBuddy v1.0.0\n\nYour family\'s home management companion.\n\nMade with ❤️ for families everywhere.',
+          [{ text: 'OK' }]
+        );
+      },
+    },
+    {
+      id: 'signout',
+      title: 'Sign Out',
+      subtitle: 'Sign out of your account',
+      icon: 'log-out',
+      onPress: handleSignOut,
+      color: colors.error[500],
+    },
+  ];
+
+  const renderSettingsItem = (item: SettingsItem) => (
+    <TouchableOpacity
+      key={item.id}
+      onPress={item.onPress}
+      style={[
+        componentStyles.flexRow,
+        componentStyles.itemsCenter,
+        componentStyles.justifyBetween,
+        { 
+          paddingVertical: spacing[4],
+          paddingHorizontal: spacing[6],
+          borderBottomWidth: 1,
+          borderBottomColor: colors.neutral[200],
+          backgroundColor: colors.background,
+        }
+      ]}
+    >
+      <View style={[componentStyles.flexRow, componentStyles.itemsCenter, { flex: 1 }]}>
+        <View style={[
+          { 
+            width: spacing[10], 
+            height: spacing[10], 
+            borderRadius: spacing[5],
+            backgroundColor: item.color || colors.primary[100],
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: spacing[4]
+          }
+        ]}>
+          <Ionicons 
+            name={item.icon} 
+            size={spacing[5]} 
+            color={item.color || colors.primary[500]} 
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[
+            componentStyles.textLg,
+            componentStyles.fontSemibold,
+            { color: item.color || colors.text.primary, marginBottom: spacing[1] }
+          ]}>
+            {item.title}
+          </Text>
+          {item.subtitle && (
+            <Text style={[componentStyles.textSm, componentStyles.textSecondary]}>
+              {item.subtitle}
+            </Text>
+          )}
+        </View>
+      </View>
+      <Ionicons 
+        name="chevron-forward" 
+        size={spacing[5]} 
+        color={colors.neutral[400]} 
+      />
+    </TouchableOpacity>
+  );
+
+  return (
+    <View style={componentStyles.safeArea}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={[
+          componentStyles.itemsCenter,
+          { 
+            paddingTop: spacing[8], 
+            paddingBottom: spacing[6], 
+            paddingHorizontal: spacing[6] 
+          }
+        ]}>
+          <View style={[
+            componentStyles.roundedFull,
+            { 
+              backgroundColor: colors.primary[100], 
+              width: spacing[16], 
+              height: spacing[16], 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              marginBottom: spacing[4]
+            }
+          ]}>
+            <Ionicons name="settings" size={spacing[8]} color={colors.primary[500]} />
+          </View>
+          
+          <Text style={[
+            componentStyles.textXl, 
+            componentStyles.fontBold, 
+            componentStyles.textPrimary, 
+            { marginBottom: spacing[2] }
+          ]}>
+            Settings
+          </Text>
+          
+          <Text style={[
+            componentStyles.textLg, 
+            componentStyles.textSecondary, 
+            { textAlign: 'center' }
+          ]}>
+            Manage your HomeBuddy preferences
+          </Text>
+        </View>
+
+        {/* Settings Items */}
+        <View style={{ marginBottom: spacing[6] }}>
+          {settingsItems.map(renderSettingsItem)}
+        </View>
+
+        {/* User Info */}
+        <View style={[
+          componentStyles.itemsCenter,
+          { 
+            paddingHorizontal: spacing[6], 
+            paddingBottom: spacing[8] 
+          }
+        ]}>
+          <Text style={[componentStyles.textSm, componentStyles.textSecondary]}>
+            Signed in as
+          </Text>
+          <Text style={[
+            componentStyles.textBase, 
+            componentStyles.fontMedium, 
+            componentStyles.textPrimary
+          ]}>
+            {user?.email}
+          </Text>
+        </View>
+      </ScrollView>
+    </View>
+  );
+}

@@ -10,7 +10,7 @@ export default function TabLayout() {
   useEffect(() => {
     if (!loading && !user) {
       // User is not authenticated, redirect to login
-      router.replace('/login');
+      router.replace('/(auth)/login');
     }
   }, [user, loading]);
 
@@ -50,6 +50,15 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings" size={size} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
-} 
+}

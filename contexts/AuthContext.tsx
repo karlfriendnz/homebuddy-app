@@ -32,10 +32,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('AuthContext: Sign out error:', error);
+        throw error;
+      }
+      // Clear the user state immediately
+      setUser(null);
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Sign out error:', error);
+      console.error('AuthContext: Sign out error:', error);
+      throw error;
     }
   };
 
@@ -58,4 +64,4 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-} 
+}

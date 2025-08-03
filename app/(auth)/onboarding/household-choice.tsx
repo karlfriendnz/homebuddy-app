@@ -18,6 +18,7 @@ import { supabase } from '../../../lib/supabase';
 import ErrorMessage from '../../../components/ui/ErrorMessage';
 import { componentStyles, colors, spacing, borderRadius, typography } from '../../../styles/global';
 import { useAuth } from '../../../contexts/AuthContext';
+import { uploadHouseholdImage } from '../../../lib/image-upload';
 
 // Constants for magic numbers
 const INVITE_EXPIRY_DAYS = 30;
@@ -28,15 +29,15 @@ const INVITE_CODE_START = 2;
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const isMobile = screenWidth < 768; // Mobile breakpoint
 
-// Sample slideshow images - you can replace these with your own
-const slideshowImages = [
-  'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&h=1200&fit=crop',
-  'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&h=1200&fit=crop',
-  'https://images.unsplash.com/photo-1571896349842-33c33c89424de2d?w=800&h=1200&fit=crop',
-];
+  // Sample slideshow images - you can replace these with your own
+  const slideshowImages = [
+    require('../../../assets/images/slideshow/slide1.jpg'),
+    require('../../../assets/images/slideshow/slide2.jpg'),
+    require('../../../assets/images/slideshow/slide3.jpg'),
+  ];
 
 export default function HouseholdChoice() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const [choice, setChoice] = useState<'create' | 'join' | null>(null);
   const [householdName, setHouseholdName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
@@ -72,46 +73,9 @@ export default function HouseholdChoice() {
 
       return () => clearInterval(interval);
     }
-  }, [isMobile]);
+  }, [isMobile, slideshowImages.length]);
 
-  const uploadImageToSupabase = async (uri: string, userId: string): Promise<string> => {
-    try {
-      // Convert image to blob
-      const response = await fetch(uri);
-      const blob = await response.blob();
 
-      // Generate unique filename
-      const fileExt = uri.split('.').pop() || 'jpg';
-      const fileName = `${userId}_${Date.now()}.${fileExt}`;
-      const filePath = `household-images/${fileName}`;
-
-      // Upload to Supabase storage
-      const { error } = await supabase.storage
-        .from('household-images')
-        .upload(filePath, blob, {
-          contentType: `image/${fileExt}`,
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (error) {
-        // eslint-disable-next-line no-console
-        console.error('Upload error:', error);
-        throw error;
-      }
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('household-images')
-        .getPublicUrl(filePath);
-
-      return publicUrl;
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Error uploading image:', error);
-      throw new Error('Failed to upload image');
-    }
-  };
 
   const handleCreateHousehold = async () => {
     setError('');
@@ -132,22 +96,7 @@ export default function HouseholdChoice() {
         return;
       }
 
-      let imageUrl = null;
-      
-      // Upload image if provided
-      if (householdImage) {
-        try {
-          imageUrl = await uploadImageToSupabase(householdImage, user.id);
-        } catch (uploadError) {
-          // eslint-disable-next-line no-console
-          console.error('Upload error:', uploadError);
-          setError('Failed to upload image. Please try again.');
-          setLoading(false);
-          return;
-        }
-      }
-
-      // Create household
+      // Create household first (without image)
       const { data: household, error: householdError } = await supabase
         .from('households')
         .insert([
@@ -155,7 +104,7 @@ export default function HouseholdChoice() {
             name: householdName.trim(),
             created_by: user.id,
             household_type: householdType,
-            image_url: imageUrl,
+            image_url: null, // Will be updated after image upload
           }
         ])
         .select()
@@ -167,26 +116,45 @@ export default function HouseholdChoice() {
         return;
       }
 
+      // Upload image if provided
+      if (householdImage) {
+        const uploadResult = await uploadHouseholdImage(
+          householdImage,
+          user.id,
+          household.id,
+          householdName.trim()
+        );
+        
+        if (!uploadResult.success) {
+          setError(`Failed to upload image: ${uploadResult.error}`);
+          setLoading(false);
+          return;
+        }
+      }
+
       // Add user as household member with admin role
-      const { error: memberError } = await supabase
+      const { data: memberData, error: memberError } = await supabase
         .from('household_members')
         .insert([
           {
             household_id: household.id,
             user_id: user.id,
-            role: 'admin',
-            joined_at: new Date().toISOString(),
+            role: 'admin'
+            // Don't set joined_at - let the database handle it
           }
-        ]);
+        ])
+        .select();
 
       if (memberError) {
-        setError(memberError.message);
+        setError(`Failed to create household member: ${memberError.message}`);
         setLoading(false);
         return;
       }
 
       // Create invite code for the household
       const inviteCode = generateInviteCode();
+      const expiresAt = new Date(Date.now() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
       const { error: inviteError } = await supabase
         .from('invites')
         .insert([
@@ -194,27 +162,25 @@ export default function HouseholdChoice() {
             household_id: household.id,
             created_by: user.id,
             invite_code: inviteCode,
-            role: 'member',
-            expires_at: new Date(Date.now() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000).toISOString(), // 30 days
+            role: 'adult', // Use valid user_role enum value
+            expires_at: expiresAt, // 30 days
           }
         ]);
 
       if (inviteError) {
-        setError(inviteError.message);
+        setError(`Failed to create invite: ${inviteError.message}`);
         setLoading(false);
         return;
       }
 
-      Alert.alert(
-        'Household Created!',
-        `Your household "${householdName}" has been created successfully.`,
-        [
-          {
-            text: 'Continue',
-            onPress: () => router.replace('/(tabs)')
-          }
-        ]
-      );
+      // Navigate to family setup screen
+      router.replace({
+        pathname: '/(auth)/onboarding/family-setup',
+        params: {
+          householdId: household.id,
+          householdName: householdName
+        }
+      });
 
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -359,7 +325,8 @@ export default function HouseholdChoice() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        setHouseholdImage(result.assets[0].uri);
+        const imageUri = result.assets[0].uri;
+        setHouseholdImage(imageUri);
       }
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -370,12 +337,9 @@ export default function HouseholdChoice() {
 
   const handleSignOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        setError('Failed to sign out. Please try again.');
-      } else {
-        router.replace('/login');
-      }
+      await signOut();
+      // After signout, the AuthContext will automatically update
+      // and the user will be redirected to the appropriate screen
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Sign out error:', error);
@@ -630,8 +594,8 @@ export default function HouseholdChoice() {
                             width: '100%',
                             height: '100%',
                             borderRadius: borderRadius.md - 2,
+                            resizeMode: 'cover',
                           }}
-                          resizeMode="cover"
                         />
                         <TouchableOpacity
                           style={{
@@ -940,8 +904,8 @@ export default function HouseholdChoice() {
                             width: '100%',
                             height: '100%',
                             borderRadius: borderRadius.md - 2,
+                            resizeMode: 'cover',
                           }}
-                          resizeMode="cover"
                         />
                         <TouchableOpacity
                           style={{
@@ -1029,24 +993,34 @@ export default function HouseholdChoice() {
       <View style={componentStyles.loginSlideshowPanel}>
         {/* Current Image */}
         <Image
-          source={{ uri: slideshowImages[currentImageIndex] }}
-          style={componentStyles.loginSlideshowImage}
+          source={slideshowImages[currentImageIndex]}
+          style={[componentStyles.loginSlideshowImage, { resizeMode: 'cover' }]}
         />
         
-        {/* Overlay */}
-        <View style={componentStyles.loginSlideshowOverlay} />
+        {/* Signout Button - Top Right Corner */}
+        <TouchableOpacity
+          style={{
+            position: 'absolute',
+            top: 20,
+            right: 20,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            borderRadius: 20,
+            paddingHorizontal: 16,
+            paddingVertical: 8,
+            zIndex: 10,
+          }}
+          onPress={handleSignOut}
+        >
+          <Text style={{
+            color: 'white',
+            fontSize: 14,
+            fontWeight: '600',
+          }}>
+            Sign Out
+          </Text>
+        </TouchableOpacity>
         
-        {/* Content Overlay */}
-        <View style={componentStyles.loginSlideshowContent}>
-          <View style={componentStyles.loginSlideshowTextContainer}>
-            <Text style={componentStyles.loginSlideshowTitle}>
-              Turn your home into a haven
-            </Text>
-            <Text style={componentStyles.loginSlideshowSubtitle}>
-              Organize tasks, manage your household, and create a more harmonious living space with HomeBuddy.
-            </Text>
-          </View>
-        </View>
+        {/* Content Overlay - Removed text */}
 
         {/* Slideshow Indicators */}
         <View style={componentStyles.loginSlideshowIndicators}>

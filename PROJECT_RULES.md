@@ -503,6 +503,198 @@ import { colors, componentStyles, spacing } from '../../styles/global';
 
 ---
 
+## 🖼️ **Image Upload Rules**
+
+### **MANDATORY: Use Simple Image Upload Pattern**
+
+**✅ REQUIRED:**
+- All image uploads MUST use the simple upload pattern from `lib/image-upload.ts`
+- Let the database handle timestamps automatically
+- Use descriptive filenames with timestamps for uniqueness
+- Handle errors gracefully with user-friendly messages
+
+**❌ FORBIDDEN:**
+- Complex image manipulation before upload
+- Manual timestamp handling that can cause timezone issues
+- Retry logic that masks underlying problems
+- Hardcoded file paths or bucket names
+- Image resizing that can fail silently
+
+### **Image Upload Pattern (REQUIRED)**
+
+**✅ CORRECT - Simple Upload Pattern:**
+```typescript
+// 1. Import the upload function
+import { uploadImageToSupabase, uploadHouseholdImage } from '../../lib/image-upload';
+
+// 2. Use the simple upload pattern
+const uploadResult = await uploadImageToSupabase(
+  imageUri,           // The image URI from picker
+  userId,             // Current user ID
+  'bucket-name',      // Storage bucket name
+  'descriptive_filename.jpg'  // Optional descriptive filename
+);
+
+// 3. Handle the result
+if (!uploadResult.success) {
+  setError(`Upload failed: ${uploadResult.error}`);
+  return;
+}
+
+// 4. Use the uploaded URL
+const imageUrl = uploadResult.url;
+```
+
+**✅ CORRECT - Household Image Upload:**
+```typescript
+// Use the specialized household upload function
+const uploadResult = await uploadHouseholdImage(
+  imageUri,
+  userId,
+  householdId,
+  householdName
+);
+
+if (!uploadResult.success) {
+  setError(`Failed to upload image: ${uploadResult.error}`);
+  return;
+}
+```
+
+**❌ WRONG - Complex Upload Pattern:**
+```typescript
+// ❌ Never do this - Complex manipulation
+const resizedImage = await ImageManipulator.manipulateAsync(
+  imageUri,
+  [{ resize: { width: 800, height: 800 } }],
+  { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+);
+
+// ❌ Never do this - Manual timestamp handling
+const joinedAt = new Date().toISOString(); // Can cause timezone issues
+
+// ❌ Never do this - Complex retry logic
+for (let attempt = 1; attempt <= 3; attempt++) {
+  try {
+    // Complex upload logic
+  } catch (error) {
+    // Retry logic that masks problems
+  }
+}
+```
+
+### **Image Upload Best Practices**
+
+**1. Filename Generation:**
+```typescript
+// ✅ GOOD - Descriptive with timestamp
+`household_${householdId}_${Date.now()}.jpg`
+`profile_${userId}_${Date.now()}.png`
+`event_${eventId}_${Date.now()}.webp`
+
+// ❌ BAD - Generic or no timestamp
+`image.jpg`
+`upload.png`
+`file.jpg`
+```
+
+**2. Error Handling:**
+```typescript
+// ✅ GOOD - Clear error messages
+if (!uploadResult.success) {
+  setError(`Failed to upload image: ${uploadResult.error}`);
+  return;
+}
+
+// ❌ BAD - Generic error messages
+if (error) {
+  setError('Something went wrong');
+  return;
+}
+```
+
+**3. Database Updates:**
+```typescript
+// ✅ GOOD - Let database handle timestamps
+const { error: updateError } = await supabase
+  .from('table_name')
+  .update({ image_url: uploadResult.url })
+  .eq('id', recordId);
+
+// ❌ BAD - Manual timestamp handling
+const { error: updateError } = await supabase
+  .from('table_name')
+  .update({ 
+    image_url: uploadResult.url,
+    updated_at: new Date().toISOString() // Can cause timezone issues
+  })
+  .eq('id', recordId);
+```
+
+### **Storage Bucket Naming Convention**
+
+**✅ REQUIRED Bucket Names:**
+- `household-images` - For household profile images
+- `user-avatars` - For user profile pictures
+- `event-images` - For event photos
+- `task-images` - For task-related images
+- `receipt-images` - For shopping receipts
+
+**❌ FORBIDDEN:**
+- Generic bucket names like `images`, `uploads`, `files`
+- Bucket names without clear purpose
+- Hardcoded bucket names in components
+
+### **Image Upload Validation**
+
+**✅ REQUIRED Validation:**
+```typescript
+// 1. Check if image was selected
+if (!imageUri) {
+  setError('Please select an image');
+  return;
+}
+
+// 2. Use the upload function
+const uploadResult = await uploadImageToSupabase(imageUri, userId, bucketName);
+
+// 3. Handle the result
+if (!uploadResult.success) {
+  setError(`Upload failed: ${uploadResult.error}`);
+  return;
+}
+```
+
+**❌ FORBIDDEN Validation:**
+```typescript
+// ❌ Don't manually check file size
+const response = await fetch(imageUri);
+const blob = await response.blob();
+if (blob.size > 5 * 1024 * 1024) {
+  setError('File too large');
+  return;
+}
+
+// ❌ Don't manually validate file type
+const fileExtension = imageUri.split('.').pop();
+if (!['jpg', 'png', 'gif'].includes(fileExtension)) {
+  setError('Invalid file type');
+  return;
+}
+```
+
+### **Migration Rules for Existing Uploads**
+
+When updating existing image upload code:
+1. Replace complex upload logic with simple pattern
+2. Remove manual timestamp handling
+3. Use the standardized upload functions
+4. Update error handling to be user-friendly
+5. Test thoroughly with different image types
+6. Update documentation
+
+---
+
 ## 📞 **Support & Questions**
 
 ### **Getting Help**

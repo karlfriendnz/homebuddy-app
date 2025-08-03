@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { forwardRef } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,7 @@ interface AuthInputProps extends TextInputProps {
   showPassword?: boolean;
 }
 
-export default function AuthInput({
+const AuthInput = forwardRef<TextInput, AuthInputProps>(({
   label,
   icon,
   error,
@@ -27,7 +27,7 @@ export default function AuthInput({
   onPasswordToggle,
   showPassword = false,
   ...textInputProps
-}: AuthInputProps) {
+}, ref) => {
   return (
     <View style={componentStyles.mb5}>
       <Text style={componentStyles.inputLabel}>{label}</Text>
@@ -40,6 +40,7 @@ export default function AuthInput({
       ]}>
         <Ionicons name={icon} size={constants.size.icon.medium} color={colors.neutral[500]} />
         <TextInput
+          ref={ref}
           style={[
             componentStyles.flex1, 
             componentStyles.ml3,
@@ -67,4 +68,6 @@ export default function AuthInput({
       {error ? <Text style={componentStyles.inputErrorText}>{error}</Text> : null}
     </View>
   );
-} 
+});
+
+export default AuthInput; 

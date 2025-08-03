@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -22,15 +22,22 @@ import ErrorMessage from '../../components/ui/ErrorMessage';
 import { colors, componentStyles, spacing, typography } from '../../styles/global';
 import AuthInput from '../../components/auth/AuthInput';
 import AuthButton from '../../components/auth/AuthButton';
+import { useAuth } from '../../contexts/AuthContext';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const isMobile = screenWidth < 768; // Mobile breakpoint
 
-// Sample slideshow images - you can replace these with your own
+// Slideshow images for HomeBuddy - household management app
+// Using local images from the slideshow folder
 const slideshowImages = [
-  'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&h=1200&fit=crop',
-  'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&h=1200&fit=crop',
-  'https://images.unsplash.com/photo-1571896349842-33c33c89424de2d?w=800&h=1200&fit=crop',
+  // Plant care image - people tending to plants (your provided image)
+  require('../../assets/images/slideshow/slide1.jpg'),
+  // Family organizing home
+  require('../../assets/images/slideshow/slide2.jpg'),
+  // Clean, organized kitchen
+  require('../../assets/images/slideshow/slide3.jpg'),
+  // Family planning together
+  require('../../assets/images/slideshow/slide4.jpg'),
 ];
 
 // Auth flow types
@@ -41,7 +48,10 @@ const MIN_PASSWORD_LENGTH = 8;
 
 export default function AuthScreen() {
   const params = useLocalSearchParams();
+  const { user, signOut } = useAuth();
   const [currentFlow, setCurrentFlow] = useState<AuthFlow>('email');
+  
+
   
   // Form states
   const [email, setEmail] = useState(params.email as string || '');
@@ -61,6 +71,8 @@ export default function AuthScreen() {
   const [passwordError, setPasswordError] = useState('');
   const [error, setError] = useState('');
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [emailVerified, setEmailVerified] = useState(false);
+  const passwordInputRef = useRef<TextInput>(null);
 
   // Pre-fill email if passed as parameter
   useEffect(() => {
@@ -71,9 +83,14 @@ export default function AuthScreen() {
 
 
 
-  // Get push token on component mount
+  // Get push token on component mount (only on mobile platforms)
   useEffect(() => {
     const getPushToken = async () => {
+      // Only get push token on iOS and Android, not on web
+      if (Platform.OS === 'web') {
+        return;
+      }
+
       try {
         const { status } = await Notifications.getPermissionsAsync();
         if (status !== 'granted') {
@@ -94,6 +111,27 @@ export default function AuthScreen() {
     getPushToken();
   }, []);
 
+  // Get slideshow content based on current image
+  const getSlideshowTitle = () => {
+    const titles = [
+      'Nurture your space together',
+      'Organize your family life',
+      'Keep your home spotless',
+      'Plan and coordinate tasks'
+    ];
+    return titles[currentImageIndex] || titles[0];
+  };
+
+  const getSlideshowSubtitle = () => {
+    const subtitles = [
+      'Care for your plants, pets, and home as a team with shared responsibility.',
+      'Manage household tasks, schedules, and responsibilities together.',
+      'Maintain a clean, organized home with coordinated cleaning routines.',
+      'Assign tasks, track progress, and celebrate achievements as a family.'
+    ];
+    return subtitles[currentImageIndex] || subtitles[0];
+  };
+
   // Auto-advance slideshow (only on desktop)
   useEffect(() => {
     if (!isMobile) {
@@ -103,7 +141,7 @@ export default function AuthScreen() {
 
       return () => clearInterval(interval);
     }
-  }, [isMobile]);
+  }, [isMobile, slideshowImages.length]);
 
   // Validate email format
   const validateEmail = (email: string) => {
@@ -205,8 +243,13 @@ export default function AuthScreen() {
       const userExists = await authUtils.checkUserExists(email.trim());
       
       if (userExists) {
-        // User exists, show login form
+        // User exists, show login form and hide email field
         setCurrentFlow('login');
+        setEmailVerified(true);
+        // Focus on password field after a short delay
+        setTimeout(() => {
+          passwordInputRef.current?.focus();
+        }, 100);
       } else {
         // User doesn't exist, show signup form
         // Store the email for signup process and clear the display field
@@ -414,6 +457,7 @@ export default function AuthScreen() {
     setPassword('');
     setPasswordError('');
     setError('');
+    setEmailVerified(false);
   };
 
   // Handle resend verification email
@@ -457,6 +501,8 @@ export default function AuthScreen() {
         autoFocus={true}
         editable={!isLoading}
         error={emailError}
+        onSubmitEditing={handleEmailCheck}
+        returnKeyType="go"
       />
 
       <View style={{ marginTop: spacing[6] }}>
@@ -473,22 +519,40 @@ export default function AuthScreen() {
   // Render login step
   const renderLoginStep = () => (
     <View style={componentStyles.flex1}>
-      <AuthInput
-        label="Email"
-        icon="mail-outline"
-        placeholder="Enter your email"
-        value={email}
-        onChangeText={(text) => {
-          setEmail(text);
-          if (emailError) setEmailError('');
-        }}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoCorrect={false}
-        autoComplete="email"
-        editable={!isLoading}
-        error={emailError}
-      />
+      {/* Show email field only if email hasn't been verified yet */}
+      {!emailVerified && (
+        <AuthInput
+          label="Email"
+          icon="mail-outline"
+          placeholder="Enter your email"
+          value={email}
+          onChangeText={(text) => {
+            setEmail(text);
+            if (emailError) setEmailError('');
+          }}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="email"
+          editable={!isLoading}
+          error={emailError}
+          onSubmitEditing={handleEmailCheck}
+          returnKeyType="go"
+        />
+      )}
+
+      {/* Show email display when verified */}
+      {emailVerified && (
+        <View style={[componentStyles.authInputContainer, { marginBottom: spacing[4] }]}>
+          <Text style={componentStyles.authInputLabel}>Email</Text>
+          <View style={[componentStyles.authInput, { backgroundColor: colors.neutral[100] }]}>
+            <Ionicons name="mail-outline" size={20} color={colors.neutral[500]} />
+            <Text style={[componentStyles.authInputText, { color: colors.text.primary }]}>
+              {email}
+            </Text>
+          </View>
+        </View>
+      )}
 
       <AuthInput
         label="Password"
@@ -508,6 +572,9 @@ export default function AuthScreen() {
         showPasswordToggle
         onPasswordToggle={() => setShowPassword(!showPassword)}
         showPassword={showPassword}
+        ref={passwordInputRef}
+        onSubmitEditing={handleLogin}
+        returnKeyType="done"
       />
 
       <TouchableOpacity
@@ -527,15 +594,27 @@ export default function AuthScreen() {
         disabled={isLoading}
       />
 
-      <TouchableOpacity
-        onPress={handleBackToEmail}
-        style={[componentStyles.itemsCenter, { marginTop: spacing[4] }]}
-        disabled={isLoading}
-      >
-        <Text style={[componentStyles.textSm, { color: colors.neutral[600] }]}>
-          Use a different email
-        </Text>
-      </TouchableOpacity>
+      <View style={[componentStyles.itemsCenter, { marginTop: spacing[4] }]}>
+        <TouchableOpacity
+          onPress={handleBackToEmail}
+          style={[componentStyles.itemsCenter, { marginBottom: spacing[2] }]}
+          disabled={isLoading}
+        >
+          <Text style={[componentStyles.textSm, { color: colors.neutral[600] }]}>
+            Use a different email
+          </Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          onPress={() => router.push('/(auth)/signup')}
+          style={componentStyles.itemsCenter}
+          disabled={isLoading}
+        >
+          <Text style={[componentStyles.textSm, { color: colors.primary[500] }]}>
+            Don't have an account? Sign up
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -699,13 +778,13 @@ export default function AuthScreen() {
     switch (currentFlow) {
       case 'email':
         return {
-          title: 'Welcome Back',
+          title: 'Welcome',
           subtitle: 'Enter your email to continue'
         };
       case 'login':
         return {
-          title: 'Sign In',
-          subtitle: 'Sign in to your HomeBuddy account'
+          title: emailVerified ? 'Enter Password' : 'Sign In',
+          subtitle: emailVerified ? 'Enter your password to continue' : 'Sign in to your HomeBuddy account'
         };
       case 'signup':
         return {
@@ -724,7 +803,7 @@ export default function AuthScreen() {
         };
       default:
         return {
-          title: 'Welcome Back',
+          title: 'Welcome',
           subtitle: 'Enter your email to continue'
         };
     }
@@ -900,24 +979,44 @@ export default function AuthScreen() {
       <View style={componentStyles.loginSlideshowPanel}>
         {/* Current Image */}
         <Image
-          source={{ uri: slideshowImages[currentImageIndex] }}
-          style={componentStyles.loginSlideshowImage}
+          source={slideshowImages[currentImageIndex]}
+          style={[componentStyles.loginSlideshowImage, { resizeMode: 'cover' }]}
         />
         
-        {/* Overlay */}
-        <View style={componentStyles.loginSlideshowOverlay} />
+        {/* Signout Button - Top Right Corner (Only show when user is logged in) */}
+        {user && (
+          <TouchableOpacity
+            style={{
+              position: 'absolute',
+              top: 20,
+              right: 20,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              borderRadius: 20,
+              paddingHorizontal: 16,
+              paddingVertical: 8,
+              zIndex: 10,
+            }}
+            onPress={async () => {
+              try {
+                await signOut();
+                // After signout, the AuthContext will automatically update
+                // and the user will be redirected to the appropriate screen
+              } catch (error) {
+                setError('Failed to sign out. Please try again.');
+              }
+            }}
+          >
+            <Text style={{
+              color: 'white',
+              fontSize: 14,
+              fontWeight: '600',
+            }}>
+              Sign Out
+            </Text>
+          </TouchableOpacity>
+        )}
         
-        {/* Content Overlay */}
-        <View style={componentStyles.loginSlideshowContent}>
-          <View style={componentStyles.loginSlideshowTextContainer}>
-            <Text style={componentStyles.loginSlideshowTitle}>
-              Turn your home into a haven
-            </Text>
-            <Text style={componentStyles.loginSlideshowSubtitle}>
-              Organize tasks, manage your household, and create a more harmonious living space with HomeBuddy.
-            </Text>
-          </View>
-        </View>
+        {/* Content Overlay - Removed text */}
 
         {/* Slideshow Indicators */}
         <View style={componentStyles.loginSlideshowIndicators}>

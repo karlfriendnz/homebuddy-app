@@ -92,19 +92,26 @@ export const householdUtils = {
   // Check if user has any households
   async userHasHousehold(userId: string): Promise<boolean> {
     try {
+      // Validate user ID
+      if (!userId || typeof userId !== 'string') {
+        return false;
+      }
+      
       const { data, error } = await supabase
         .from('household_members')
         .select('id')
         .eq('user_id', userId)
-        .eq('is_active', true)
         .limit(1);
       
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
+      
       return data && data.length > 0;
     } catch (error) {
-      handleSupabaseError(error);
+      // Don't throw here, just return false to allow the app to continue
+      return false;
     }
-    return false; // This line will never be reached due to handleSupabaseError throwing
   },
 
   // Get user's households
@@ -116,8 +123,7 @@ export const householdUtils = {
           *,
           household_members!inner(user_id)
         `)
-        .eq('household_members.user_id', userId)
-        .eq('household_members.is_active', true);
+        .eq('household_members.user_id', userId);
       
       if (error) throw error;
       return data || [];
@@ -166,6 +172,11 @@ export const householdUtils = {
     settings?: any
   ): Promise<Household> {
     try {
+      // Validate inputs
+      if (!name || !createdBy) {
+        throw new Error('Household name and creator are required');
+      }
+      
       const { data, error } = await supabase
         .from('households')
         .insert({
@@ -177,7 +188,10 @@ export const householdUtils = {
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
+      
       return data;
     } catch (error) {
       handleSupabaseError(error);
