@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Run HomeBuddy project rules check
+echo "🏠 Checking HomeBuddy project rules..."
+node scripts/pre-commit-check.js
+
+# Run lint-staged
+echo "🔍 Running lint-staged..."
+npx lint-staged

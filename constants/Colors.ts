@@ -1,26 +1,21 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * HomeBuddy Color System
+ * This file provides color constants that align with our global design system.
+ * For comprehensive styling, use the global styles from '../../styles/global'
  */
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+import { colors } from '../styles/global';
 
-export const Colors = {
-  light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
-  },
-  dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
-  },
-};
+// Legacy color constants for backward compatibility
+const tintColorLight = colors.primary[500];
+const tintColorDark = colors.text.inverse;
+    text: colors.text.primary,
+    background: colors.background,
+    icon: colors.neutral[500],
+    tabIconDefault: colors.neutral[500],
+    text: colors.text.inverse,
+    background: colors.neutral[900],
+    icon: colors.neutral[400],
+    tabIconDefault: colors.neutral[400],
+
+// Export our global colors for easy access
+export { colors };

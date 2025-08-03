@@ -12,6 +12,7 @@ import { useBottomTabOverflow } from '@/components/ui/TabBarBackground';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
 const HEADER_HEIGHT = 250;
+const PARALLAX_SCALE_FACTOR = 0.75;
 
 type Props = PropsWithChildren<{
   headerImage: ReactElement;
@@ -34,7 +35,7 @@ export default function ParallaxScrollView({
           translateY: interpolate(
             scrollOffset.value,
             [-HEADER_HEIGHT, 0, HEADER_HEIGHT],
-            [-HEADER_HEIGHT / 2, 0, HEADER_HEIGHT * 0.75]
+            [-HEADER_HEIGHT / 2, 0, HEADER_HEIGHT * PARALLAX_SCALE_FACTOR]
           ),
         },
         {

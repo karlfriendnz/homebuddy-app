@@ -4,46 +4,87 @@
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
-    "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "test": "jest --watchAll",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
+    "check-rules": "node scripts/pre-commit-check.js",
+    "prepare": "husky",
+    "build:ios:preview": "eas build --platform ios --profile preview",
+    "build:ios:production": "eas build --platform ios --profile production",
+    "build:android:preview": "eas build --platform android --profile preview",
+    "build:android:production": "eas build --platform android --profile production",
+    "build:all:preview": "eas build --platform all --profile preview",
+    "build:all:production": "eas build --platform all --profile production",
+    "build:list": "eas build:list",
+    "build:view": "eas build:view",
+    "build:download": "eas build:download",
+    "validate-build": "node scripts/validate-build-config.js",
+    "prebuild": "npm run lint && npm run check-rules && npm run validate-build"
+  },
+  "jest": {
+    "preset": "jest-expo"
   },
   "dependencies": {
-    "@expo/vector-icons": "^14.1.0",
-    "@react-navigation/bottom-tabs": "^7.3.10",
-    "@react-navigation/elements": "^2.3.8",
-    "@react-navigation/native": "^7.1.6",
-    "expo": "~53.0.20",
-    "expo-blur": "~14.1.5",
-    "expo-constants": "~17.1.7",
-    "expo-font": "~13.3.2",
-    "expo-haptics": "~14.1.4",
-    "expo-image": "~2.4.0",
-    "expo-linking": "~7.1.7",
-    "expo-router": "~5.1.4",
-    "expo-splash-screen": "~0.30.10",
-    "expo-status-bar": "~2.2.3",
-    "expo-symbols": "~0.4.5",
-    "expo-system-ui": "~5.0.10",
-    "expo-web-browser": "~14.2.0",
-    "react": "19.0.0",
-    "react-dom": "19.0.0",
-    "react-native": "0.79.5",
-    "react-native-gesture-handler": "~2.24.0",
-    "react-native-reanimated": "~3.17.4",
-    "react-native-safe-area-context": "5.4.0",
-    "react-native-screens": "~4.11.1",
-    "react-native-web": "~0.20.0",
+    "@expo/vector-icons": "^14.0.4",
+    "@react-native-async-storage/async-storage": "2.1.2",
+    "@supabase/supabase-js": "^2.39.0",
+    "dotenv": "^17.2.1",
+    "expo": "~52.0.0",
+    "expo-constants": "~17.0.0",
+    "expo-font": "~12.0.0",
+    "expo-image-picker": "~16.1.4",
+    "expo-linking": "~7.0.0",
+    "expo-notifications": "~0.31.4",
+    "expo-router": "~4.0.0",
+    "expo-splash-screen": "~0.29.0",
+    "expo-status-bar": "~2.0.0",
+    "expo-system-ui": "~4.0.0",
+    "expo-web-browser": "~14.0.0",
+    "posthog-js": "^1.258.5",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-native": "0.76.3",
+    "react-native-safe-area-context": "4.10.5",
+    "react-native-screens": "~4.0.0",
     "react-native-webview": "13.13.5"
   },
   "devDependencies": {
-    "@babel/core": "^7.25.2",
-    "@types/react": "~19.0.10",
-    "typescript": "~5.8.3",
-    "eslint": "^9.25.0",
-    "eslint-config-expo": "~9.2.0"
+    "@babel/core": "^7.20.0",
+    "@types/react": "~18.3.12",
+    "@types/react-test-renderer": "^18.0.0",
+    "eslint": "^8.57.0",
+    "eslint-config-expo": "^7.0.0",
+    "eslint-plugin-react": "^7.34.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-native": "^4.1.0",
+    "husky": "^9.0.11",
+    "jest": "^29.2.1",
+    "jest-expo": "~52.0.0",
+    "lint-staged": "^15.2.2",
+    "prettier": "^3.2.5",
+    "react-test-renderer": "18.3.1",
+    "typescript": "^5.3.0"
   },
-  "private": true
+  "private": true,
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  },
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": [
+          "posthog-react-native"
+        ]
+      }
+    }
+  }
 }
