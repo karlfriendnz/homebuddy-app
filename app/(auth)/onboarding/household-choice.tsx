@@ -285,7 +285,7 @@ export default function HouseholdChoice() {
 
       Alert.alert(
         'Joined Household!',
-        `You have successfully joined "${household.name}".`,
+        `You have successfully joined "${household.name || 'the household'}".`,
         [
           {
             text: 'Continue',
@@ -568,7 +568,7 @@ export default function HouseholdChoice() {
 
                 {/* Household Image Uploader */}
                 <View style={componentStyles.authInputContainer}>
-                  <Text style={componentStyles.authInputLabel}>Household Image (Optional)</Text>
+                  <Text style={componentStyles.authInputLabel}>Household Image</Text>
                   <TouchableOpacity
                     style={[
                       {
@@ -631,7 +631,7 @@ export default function HouseholdChoice() {
                   disabled={!householdName.trim() || loading}
                 >
                   <Text style={componentStyles.authButtonText}>
-                    {loading ? 'Creating...' : 'Create Household'}
+                    {loading ? 'Creating...' : 'Continue'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -878,7 +878,7 @@ export default function HouseholdChoice() {
 
                 {/* Household Image Uploader */}
                 <View style={componentStyles.authInputContainer}>
-                  <Text style={componentStyles.authInputLabel}>Household Image (Optional)</Text>
+                  <Text style={componentStyles.authInputLabel}>Household Image</Text>
                   <TouchableOpacity
                     style={[
                       {
@@ -941,7 +941,7 @@ export default function HouseholdChoice() {
                   disabled={!householdName.trim() || loading}
                 >
                   <Text style={componentStyles.authButtonText}>
-                    {loading ? 'Creating...' : 'Create Household'}
+                    {loading ? 'Creating...' : 'Continue'}
                   </Text>
                 </TouchableOpacity>
               </View>

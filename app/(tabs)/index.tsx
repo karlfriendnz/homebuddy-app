@@ -1,14 +1,35 @@
-import React, { useEffect } from 'react';
-import { View, Text } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { componentStyles, colors, spacing } from '../../styles/global';
 import { trackScreen } from '@/lib/posthog';
+import { useLocalSearchParams } from 'expo-router';
 
 export default function HomeScreen() {
+  const params = useLocalSearchParams<{ fromOnboarding?: string }>();
+  const [hasShownWelcome, setHasShownWelcome] = useState(false);
+
   useEffect(() => {
     // Track screen view when component mounts
     trackScreen('Home Screen');
   }, []);
+
+  useEffect(() => {
+    // Show welcome popup if coming from onboarding
+    if (params.fromOnboarding === 'true' && !hasShownWelcome) {
+      setHasShownWelcome(true);
+      Alert.alert(
+        'Welcome to HomeBuddy! 🏠',
+        'Your household is now set up and ready to go. Start organizing your home life together!',
+        [
+          {
+            text: 'Get Started',
+            style: 'default'
+          }
+        ]
+      );
+    }
+  }, [params.fromOnboarding, hasShownWelcome]);
 
   return (
     <View style={componentStyles.screenContainer}>

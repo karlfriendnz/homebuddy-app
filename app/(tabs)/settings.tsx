@@ -237,8 +237,8 @@ export default function SettingsScreen() {
       router.replace('/(auth)/onboarding/household-choice');
       
       const message = deleteAllMembers 
-        ? `The household "${userHousehold.name}" and all its members have been successfully deleted.`
-        : `The household "${userHousehold.name}" has been successfully deleted.`;
+        ? `The household "${userHousehold.name || 'your household'}" and all its members have been successfully deleted.`
+        : `The household "${userHousehold.name || 'your household'}" has been successfully deleted.`;
       
       Alert.alert(
         'Household Deleted',
@@ -326,7 +326,7 @@ export default function SettingsScreen() {
     ...(userRole === 'admin' && userHousehold ? [{
       id: 'delete-household',
       title: 'Delete Household',
-      subtitle: `Delete "${userHousehold.name}" and all its data`,
+              subtitle: `Delete "${userHousehold.name || 'your household'}" and all its data`,
       icon: 'home' as keyof typeof Ionicons.glyphMap,
       onPress: handleDeleteHousehold,
       color: colors.error[700],
@@ -481,7 +481,7 @@ export default function SettingsScreen() {
             componentStyles.fontMedium, 
             componentStyles.textPrimary
           ]}>
-            {user?.email}
+            {user?.email || ''}
           </Text>
         </View>
       </ScrollView>
@@ -557,7 +557,7 @@ export default function SettingsScreen() {
                 ⚠️ Warning: This will permanently delete:
               </Text>
               <Text style={[componentStyles.textSm, { color: colors.error[600] }]}>
-                • The entire household "{userHousehold?.name}"{'\n'}
+                • The entire household "{userHousehold?.name || 'your household'}"{'\n'}
                 • All household members{'\n'}
                 • All tasks and events{'\n'}
                 • All household data{'\n'}

@@ -430,7 +430,7 @@ export default function AuthScreen() {
 
     Alert.alert(
       'Reset Password',
-      `We&apos;ll send a password reset link to ${email}`,
+      `We&apos;ll send a password reset link to ${email || 'your email'}`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -654,7 +654,7 @@ export default function AuthScreen() {
       <AuthInput
         label="Password"
         icon="lock-closed-outline"
-        placeholder={`Create a password (min ${MIN_PASSWORD_LENGTH} characters)`}
+        placeholder={`Create a password (min ${MIN_PASSWORD_LENGTH || 8} characters)`}
         value={password}
         onChangeText={(text) => {
           setPassword(text);

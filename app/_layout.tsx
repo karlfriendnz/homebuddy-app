@@ -26,15 +26,21 @@ function RootLayoutNav() {
         return;
       }
       
+      // Allow family setup screen to be accessed during onboarding
+      if (segments[1] === 'onboarding' && segments[2] === 'family-setup') {
+        // User is on family setup screen, don't redirect
+        return;
+      }
+      
       // Check if user has a household
       const checkHouseholdAndRedirect = async () => {
         try {
           const hasHousehold = await householdUtils.userHasHousehold(user.id);
           
-          if (hasHousehold) {
-            // User has a household, redirect to main app
+          if (hasHousehold && segments[1] !== 'onboarding') {
+            // User has a household and not in onboarding, redirect to main app
             router.replace('/(tabs)');
-          } else if (segments[1] !== 'onboarding') {
+          } else if (!hasHousehold && segments[1] !== 'onboarding') {
             // User doesn't have a household and not already on household choice, redirect there
             router.replace('/(auth)/onboarding/household-choice');
           }
