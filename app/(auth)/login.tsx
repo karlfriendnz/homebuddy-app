@@ -23,6 +23,13 @@ import { colors, componentStyles, spacing, typography } from '../../styles/globa
 import AuthInput from '../../components/auth/AuthInput';
 import AuthButton from '../../components/auth/AuthButton';
 import { useAuth } from '../../contexts/AuthContext';
+import { 
+  EmailStep, 
+  LoginStep, 
+  SignupStep, 
+  VerifyEmailStep, 
+  PostVerificationStep 
+} from '../../components/auth';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const isMobile = screenWidth < 768; // Mobile breakpoint
@@ -485,24 +492,13 @@ export default function AuthScreen() {
   // Render email step
   const renderEmailStep = () => (
     <View style={componentStyles.flex1}>
-      <AuthInput
-        label="Email"
-        icon="mail-outline"
-        placeholder="Enter your email address"
-        value={email}
-        onChangeText={(text) => {
-          setEmail(text);
-          if (emailError) setEmailError('');
-        }}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoCorrect={false}
-        autoComplete="email"
-        autoFocus={true}
-        editable={!isLoading}
-        error={emailError}
-        onSubmitEditing={handleEmailCheck}
-        returnKeyType="go"
+      <EmailStep
+        email={email}
+        emailError={emailError}
+        isLoading={isLoading}
+        onEmailChange={setEmail}
+        onEmailErrorChange={setEmailError}
+        onSubmit={handleEmailCheck}
       />
 
       <View style={{ marginTop: spacing[6] }}>
@@ -518,259 +514,61 @@ export default function AuthScreen() {
 
   // Render login step
   const renderLoginStep = () => (
-    <View style={componentStyles.flex1}>
-      {/* Show email field only if email hasn't been verified yet */}
-      {!emailVerified && (
-        <AuthInput
-          label="Email"
-          icon="mail-outline"
-          placeholder="Enter your email"
-          value={email}
-          onChangeText={(text) => {
-            setEmail(text);
-            if (emailError) setEmailError('');
-          }}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-          autoComplete="email"
-          editable={!isLoading}
-          error={emailError}
-          onSubmitEditing={handleEmailCheck}
-          returnKeyType="go"
-        />
-      )}
-
-      {/* Show email display when verified */}
-      {emailVerified && (
-        <View style={[componentStyles.authInputContainer, { marginBottom: spacing[4] }]}>
-          <Text style={componentStyles.authInputLabel}>Email</Text>
-          <View style={[componentStyles.authInput, { backgroundColor: colors.neutral[100] }]}>
-            <Ionicons name="mail-outline" size={20} color={colors.neutral[500]} />
-            <Text style={[componentStyles.authInputText, { color: colors.text.primary }]}>
-              {email}
-            </Text>
-          </View>
-        </View>
-      )}
-
-      <AuthInput
-        label="Password"
-        icon="lock-closed-outline"
-        placeholder="Enter your password"
-        value={password}
-        onChangeText={(text) => {
-          setPassword(text);
-          if (passwordError) setPasswordError('');
-        }}
-        secureTextEntry={!showPassword}
-        autoCapitalize="none"
-        autoCorrect={false}
-        autoComplete="password"
-        editable={!isLoading}
-        error={passwordError}
-        showPasswordToggle
-        onPasswordToggle={() => setShowPassword(!showPassword)}
-        showPassword={showPassword}
-        ref={passwordInputRef}
-        onSubmitEditing={handleLogin}
-        returnKeyType="done"
-      />
-
-      <TouchableOpacity
-        onPress={handleForgotPassword}
-        style={[componentStyles.itemsEnd, componentStyles.mb6]}
-        disabled={isLoading}
-      >
-        <Text style={[componentStyles.textSm, { color: colors.primary[500], fontWeight: typography.weight.medium }]}>
-          Forgot Password?
-        </Text>
-      </TouchableOpacity>
-
-      <AuthButton
-        title="Sign In"
-        onPress={handleLogin}
-        loading={isLoading}
-        disabled={isLoading}
-      />
-
-      <View style={[componentStyles.itemsCenter, { marginTop: spacing[4] }]}>
-        <TouchableOpacity
-          onPress={handleBackToEmail}
-          style={[componentStyles.itemsCenter, { marginBottom: spacing[2] }]}
-          disabled={isLoading}
-        >
-          <Text style={[componentStyles.textSm, { color: colors.neutral[600] }]}>
-            Use a different email
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          onPress={() => router.push('/(auth)/signup')}
-          style={componentStyles.itemsCenter}
-          disabled={isLoading}
-        >
-          <Text style={[componentStyles.textSm, { color: colors.primary[500] }]}>
-            Don't have an account? Sign up
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+    <LoginStep
+      email={email}
+      emailVerified={emailVerified}
+      password={password}
+      passwordError={passwordError}
+      showPassword={showPassword}
+      isLoading={isLoading}
+      onPasswordChange={setPassword}
+      onPasswordErrorChange={setPasswordError}
+      onShowPasswordToggle={() => setShowPassword(!showPassword)}
+      onForgotPassword={handleForgotPassword}
+      onBackToEmail={handleBackToEmail}
+      onLogin={handleLogin}
+      passwordInputRef={passwordInputRef}
+    />
   );
 
   // Render signup step
   const renderSignupStep = () => (
-    <View style={componentStyles.flex1}>
-      <AuthInput
-        label="First Name"
-        icon="person-outline"
-        placeholder="Enter your first name"
-        value={firstName}
-        onChangeText={(text) => {
-          setFirstName(text);
-          if (error && error.includes('First name')) setError('');
-        }}
-        autoCapitalize="words"
-        autoCorrect={false}
-        autoComplete="given-name"
-        editable={!isLoading}
-      />
-
-      <AuthInput
-        label="Last Name"
-        icon="person-outline"
-        placeholder="Enter your last name"
-        value={lastName}
-        onChangeText={(text) => {
-          setLastName(text);
-          if (error && error.includes('Last name')) setError('');
-        }}
-        autoCapitalize="words"
-        autoCorrect={false}
-        autoComplete="family-name"
-        editable={!isLoading}
-      />
-
-      <AuthInput
-        label="Password"
-        icon="lock-closed-outline"
-        placeholder={`Create a password (min ${MIN_PASSWORD_LENGTH || 8} characters)`}
-        value={password}
-        onChangeText={(text) => {
-          setPassword(text);
-          if (passwordError) setPasswordError('');
-        }}
-        secureTextEntry={!showPassword}
-        autoCapitalize="none"
-        autoCorrect={false}
-        autoComplete="new-password"
-        editable={!isLoading}
-        error={passwordError}
-        showPasswordToggle
-        onPasswordToggle={() => setShowPassword(!showPassword)}
-        showPassword={showPassword}
-      />
-
-      <AuthInput
-        label="Confirm Password"
-        icon="lock-closed-outline"
-        placeholder="Confirm your password"
-        value={confirmPassword}
-        onChangeText={(text) => {
-          setConfirmPassword(text);
-          if (passwordError) setPasswordError('');
-        }}
-        secureTextEntry={!showConfirmPassword}
-        autoCapitalize="none"
-        autoCorrect={false}
-        autoComplete="new-password"
-        editable={!isLoading}
-        error={passwordError}
-        showPasswordToggle
-        onPasswordToggle={() => setShowConfirmPassword(!showConfirmPassword)}
-        showPassword={showConfirmPassword}
-      />
-
-      {/* Terms and Conditions */}
-      <View style={componentStyles.authTermsContainer}>
-        <TouchableOpacity 
-          style={[componentStyles.authCheckbox, acceptTerms && componentStyles.authCheckboxChecked]}
-          onPress={() => {
-            setAcceptTerms(!acceptTerms);
-            if (error && error.includes('terms')) setError('');
-          }}
-        >
-          {acceptTerms && (
-            <Ionicons name="checkmark" size={14} color="#ffffff" />
-          )}
-        </TouchableOpacity>
-        <Text style={componentStyles.authTermsText}>
-          I agree to the{' '}
-          <Text style={componentStyles.authTermsLink}>Terms of Service</Text>
-          {' '}and{' '}
-          <Text style={componentStyles.authTermsLink}>Privacy Policy</Text>
-        </Text>
-      </View>
-
-      <AuthButton
-        title="Create Account"
-        onPress={handleSignup}
-        loading={isLoading}
-        disabled={isLoading}
-      />
-
-      <TouchableOpacity
-        onPress={handleBackToEmail}
-        style={[componentStyles.itemsCenter, { marginTop: spacing[4] }]}
-        disabled={isLoading}
-      >
-        <Text style={[componentStyles.textSm, { color: colors.neutral[600] }]}>
-          Use a different email
-        </Text>
-      </TouchableOpacity>
-    </View>
+    <SignupStep
+      firstName={firstName}
+      lastName={lastName}
+      email={signupEmail}
+      password={password}
+      confirmPassword={confirmPassword}
+      dateOfBirth=""
+      acceptTerms={acceptTerms}
+      firstNameError=""
+      lastNameError=""
+      passwordError={passwordError}
+      dateOfBirthError=""
+      isLoading={isLoading}
+      onFirstNameChange={setFirstName}
+      onLastNameChange={setLastName}
+      onPasswordChange={setPassword}
+      onConfirmPasswordChange={setConfirmPassword}
+      onDateOfBirthChange={() => {}}
+      onAcceptTermsChange={setAcceptTerms}
+      onFirstNameErrorChange={() => {}}
+      onLastNameErrorChange={() => {}}
+      onPasswordErrorChange={setPasswordError}
+      onDateOfBirthErrorChange={() => {}}
+      onSignup={handleSignup}
+      onBackToEmail={handleBackToEmail}
+    />
   );
 
   // Render email verification step
   const renderVerifyEmailStep = () => (
-    <View style={componentStyles.flex1}>
-      <View style={[componentStyles.itemsCenter, { marginBottom: spacing[6] }]}>
-        <Ionicons name="mail-outline" size={48} color={colors.primary[500]} />
-      </View>
-      
-      <Text style={[componentStyles.textXl, componentStyles.fontBold, { textAlign: 'center', marginBottom: spacing[4] }]}>
-        Check your email
-      </Text>
-      
-      <Text style={[componentStyles.textLg, componentStyles.textSecondary, { textAlign: 'center', marginBottom: spacing[6] }]}>
-        We&apos;ve sent a verification link to:
-      </Text>
-      
-      <Text style={[componentStyles.textLg, componentStyles.fontBold, { textAlign: 'center', marginBottom: spacing[8] }]}>
-        {signupEmail}
-      </Text>
-      
-      <Text style={[componentStyles.textSm, componentStyles.textSecondary, { textAlign: 'center', marginBottom: spacing[6] }]}>
-        Click the link in your email to verify your account and continue.
-      </Text>
-
-      <AuthButton
-        title="Resend Email"
-        onPress={handleResendVerification}
-        loading={isLoading}
-        disabled={isLoading}
-      />
-
-      <TouchableOpacity
-        onPress={handleBackToEmail}
-        style={[componentStyles.itemsCenter, { marginTop: spacing[4] }]}
-        disabled={isLoading}
-      >
-        <Text style={[componentStyles.textSm, { color: colors.neutral[600] }]}>
-          Use a different email
-        </Text>
-      </TouchableOpacity>
-    </View>
+    <VerifyEmailStep
+      email={signupEmail}
+      isLoading={isLoading}
+      onResendVerification={handleResendVerification}
+      onBackToEmail={handleBackToEmail}
+    />
   );
 
   // Get current flow title and subtitle
@@ -821,16 +619,7 @@ export default function AuthScreen() {
       case 'verify-email':
         return renderVerifyEmailStep();
       case 'post-verification':
-        return (
-          <View style={componentStyles.flex1}>
-            <View style={[componentStyles.itemsCenter, { marginBottom: spacing[6] }]}>
-              <Ionicons name="checkmark-circle-outline" size={48} color={colors.primary[500]} />
-            </View>
-            <Text style={[componentStyles.textLg, componentStyles.textSecondary, { textAlign: 'center' }]}>
-              Email verified! Setting up your account...
-            </Text>
-          </View>
-        );
+        return <PostVerificationStep />;
       default:
         return renderEmailStep();
     }
@@ -838,70 +627,54 @@ export default function AuthScreen() {
 
   const flowContent = getFlowContent();
 
-  // Mobile layout (single column)
   if (isMobile) {
     return (
-      <SafeAreaView style={componentStyles.safeArea}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={componentStyles.flex1}
+      <SafeAreaView style={componentStyles.safeArea} >
+        <ScrollView 
+          style={{ flex: 1, backgroundColor: colors.background }}
+          contentContainerStyle={{ 
+            paddingHorizontal: 16,
+            paddingVertical: 16
+          }}
+          showsVerticalScrollIndicator={false}
         >
-          <ScrollView
-            contentContainerStyle={[
-              componentStyles.flex1,
-              componentStyles.p6,
-              { paddingTop: spacing[10], paddingBottom: spacing[10] }
-            ]}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Logo Space */}
-            <View style={{
-              width: 80,
-              height: 80,
-              borderRadius: 40,
-              backgroundColor: colors.primary[100],
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: spacing[6],
-              alignSelf: 'center',
+          {/* Logo */}
+          <View style={{ alignItems: 'center', marginBottom: 16 }}>
+            <Image
+              source={require('../../assets/images/icon.png')}
+              style={{
+                width: 100,
+                height: 100,
+                resizeMode: 'contain',
+              }}
+            />
+          </View>
+
+          {/* Welcome Title */}
+          <View style={{ alignItems: 'center', marginBottom: 32 }}>
+            <Text style={{
+              fontSize: 32,
+              fontWeight: 'bold',
+              color: colors.text.primary,
             }}>
-              <Text style={{
-                fontSize: 32,
-                color: colors.primary[500],
-                fontWeight: 'bold',
-              }}>
-                🏠
+              Welcome Home
+            </Text>
+          </View>
+
+          {/* Error Message */}
+          {error && error.trim() ? (
+            <View style={{ marginBottom: 16 }}>
+              <Text style={{ color: colors.error[500], textAlign: 'center' }}>
+                {error}
               </Text>
             </View>
+          ) : null}
 
-            {/* Header */}
-            <View style={{ alignItems: 'center', marginBottom: spacing[8] }}>
-              <Text style={{
-                fontSize: 28,
-                fontWeight: 'bold',
-                color: colors.text.primary,
-                marginBottom: spacing[2],
-              }}>
-                {flowContent.title}
-              </Text>
-              <Text style={{
-                fontSize: 16,
-                color: colors.text.secondary,
-                textAlign: 'center',
-              }}>
-                {flowContent.subtitle}
-              </Text>
-            </View>
-
-            {/* Error Message */}
-            <ErrorMessage message={error} visible={!!error} />
-
-            {/* Form */}
-            <View style={{ width: '100%', maxWidth: 400, alignSelf: 'center' }}>
-              {getCurrentForm()}
-            </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
+          {/* Form */}
+          <View style={{ width: '100%' }}>
+            {getCurrentForm()}
+          </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -920,8 +693,7 @@ export default function AuthScreen() {
               componentStyles.flex1,
               { 
                 justifyContent: 'center',
-                alignItems: 'center',
-                minHeight: '100%'
+                alignItems: 'center'
               }
             ]}
             showsVerticalScrollIndicator={false}

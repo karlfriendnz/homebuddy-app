@@ -261,6 +261,7 @@ export const componentStyles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,
+    paddingTop: 30, 
   },
   
   screenContainer: {
@@ -651,8 +652,7 @@ export const componentStyles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   authSafeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
+    flex: 1
   },
   authScrollView: {
     flex: 1,
@@ -708,33 +708,35 @@ export const componentStyles = StyleSheet.create({
     borderColor: colors.neutral[200],
     borderRadius: 8,
     paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
+    paddingVertical: spacing[5], // Increased from spacing[4] to spacing[5] for more comfortable touch
     backgroundColor: colors.background,
-    minHeight: 48,
+    minHeight: 64, // Increased from 56 to 64 for better mobile usability
   },
   authInputText: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 18, // Increased from 16 to 18 for better mobile readability
     color: colors.text.primary,
     marginLeft: spacing[3],
+    lineHeight: 22, // Increased line height for better text rendering
   },
 
   // Button styles
   authButton: {
     borderRadius: 8,
-    paddingVertical: spacing[4],
+    paddingVertical: spacing[5], // Increased from spacing[4] to spacing[5]
     paddingHorizontal: spacing[6],
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 48,
+    minHeight: 64, // Increased from 56 to 64 for consistency with inputs
     backgroundColor: colors.primary[500],
+    marginTop: spacing[6], // Add top margin for spacing from fields
     marginBottom: spacing[6],
   },
   authButtonDisabled: {
     backgroundColor: colors.neutral[400],
   },
   authButtonText: {
-    fontSize: 16,
+    fontSize: 18, // Increased from 16 to 18 for better mobile readability
     fontWeight: '600',
     color: '#ffffff',
   },
@@ -886,6 +888,25 @@ export const componentStyles = StyleSheet.create({
   },
   loginSlideshowDotInactive: {
     backgroundColor: 'rgba(255, 255, 255, 0.4)',
+  },
+
+  // Mobile-specific auth styles
+  mobileAuthContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  mobileAuthScrollView: {
+    flex: 1,
+    paddingHorizontal: spacing[6],
+    paddingTop: spacing[8], // Reduced from spacing[10] for better mobile layout
+    paddingBottom: spacing[8], // Reduced from spacing[10] for better mobile layout
+  },
+  mobileAuthFormContainer: {
+    width: '100%',
+    maxWidth: 400,
+    alignSelf: 'center',
+    flex: 1,
+    justifyContent: 'center', // Center the form vertically
   },
 });
 

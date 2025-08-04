@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,9 +7,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   Image,
   Dimensions,
+  Animated,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -46,6 +46,9 @@ export default function HouseholdChoice() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [nextImageIndex, setNextImageIndex] = useState(1);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const nextFadeAnim = useRef(new Animated.Value(0)).current;
 
   // Check if user is authenticated and email is verified
   useEffect(() => {
@@ -64,16 +67,42 @@ export default function HouseholdChoice() {
     }
   }, [user, authLoading]);
 
-  // Auto-advance slideshow (only on desktop)
+  // Simple slideshow with preloaded local images (only on desktop)
   useEffect(() => {
     if (!isMobile) {
+      const fadeDuration = 800; // 0.8 seconds for gentle fade
+      const pauseDuration = 4000; // 4 seconds pause between transitions
+      const totalDuration = fadeDuration + pauseDuration;
+      
       const interval = setInterval(() => {
-        setCurrentImageIndex((prev) => (prev + 1) % slideshowImages.length);
-      }, 5000); // Change image every 5 seconds
+        const nextIndex = (currentImageIndex + 1) % slideshowImages.length;
+        setNextImageIndex(nextIndex);
+        
+        // Gentle cross-fade animation
+        Animated.parallel([
+          // Fade out current image over 0.8 seconds
+          Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: fadeDuration,
+            useNativeDriver: true,
+          }),
+          // Fade in next image over 0.8 seconds
+          Animated.timing(nextFadeAnim, {
+            toValue: 1,
+            duration: fadeDuration,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          // Update current image and reset animations
+          setCurrentImageIndex(nextIndex);
+          fadeAnim.setValue(1);
+          nextFadeAnim.setValue(0);
+        });
+      }, totalDuration);
 
       return () => clearInterval(interval);
     }
-  }, [isMobile, slideshowImages.length]);
+  }, [isMobile, slideshowImages.length, currentImageIndex, fadeAnim, nextFadeAnim]);
 
 
 
@@ -283,16 +312,8 @@ export default function HouseholdChoice() {
         // Don't fail the whole operation if invite update fails
       }
 
-      Alert.alert(
-        'Joined Household!',
-        `You have successfully joined "${household.name || 'the household'}".`,
-        [
-          {
-            text: 'Continue',
-            onPress: () => router.replace('/(tabs)')
-          }
-        ]
-      );
+      // Successfully joined household, redirect to main app
+      router.replace('/(tabs)');
 
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -312,7 +333,7 @@ export default function HouseholdChoice() {
       // Request permissions
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Please grant permission to access your photo library.');
+        setError('Permission needed: Please grant permission to access your photo library.');
         return;
       }
 
@@ -331,7 +352,7 @@ export default function HouseholdChoice() {
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image. Please try again.');
+      setError('Failed to pick image. Please try again.');
     }
   };
 
@@ -381,300 +402,297 @@ export default function HouseholdChoice() {
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={componentStyles.flex1}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+          enabled={true}
         >
           <ScrollView
             contentContainerStyle={[
-              componentStyles.flex1,
-              componentStyles.p6,
-              { paddingTop: spacing[10], paddingBottom: spacing[10] }
+              componentStyles.mobileAuthScrollView,
+              { 
+                flexGrow: 1,
+                paddingBottom: spacing[20] // Add extra padding at bottom for keyboard
+              }
             ]}
-            showsVerticalScrollIndicator={false}
+            showsVerticalScrollIndicator={true}
+            keyboardShouldPersistTaps="handled"
           >
-            {/* Logo Space */}
-            <View style={{
-              width: 80,
-              height: 80,
-              borderRadius: 40,
-              backgroundColor: colors.primary[100],
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: spacing[6],
-              alignSelf: 'center',
-            }}>
-              <Text style={{
-                fontSize: 32,
-                color: colors.primary[500],
-                fontWeight: 'bold',
+            <View style={[componentStyles.mobileAuthFormContainer, { justifyContent: 'center' }]}>
+              {/* Logo Space */}
+              <View style={{
+                width: 80,
+                height: 80,
+                borderRadius: 40,
+                backgroundColor: colors.primary[100],
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: spacing[6],
+                alignSelf: 'center',
               }}>
-                🏠
-              </Text>
-            </View>
-
-            {/* Header */}
-            <View style={{ alignItems: 'center', marginBottom: spacing[8] }}>
-              <Text style={{
-                fontSize: 28,
-                fontWeight: 'bold',
-                color: colors.text.primary,
-                marginBottom: spacing[2],
-              }}>
-                Welcome to HomeBuddy!
-              </Text>
-              <Text style={{
-                fontSize: 16,
-                color: colors.text.secondary,
-                textAlign: 'center',
-              }}>
-                Choose how you'd like to get started
-              </Text>
-            </View>
-
-            {/* Error Message */}
-            <ErrorMessage message={error} visible={!!error} />
-
-            {/* Choice Selection */}
-            {!choice && (
-              <View style={{ width: '100%', maxWidth: 400, alignSelf: 'center' }}>
-                {/* Create New Household Option */}
-                <TouchableOpacity 
-                  style={[componentStyles.card, { marginBottom: spacing[4] }]}
-                  onPress={() => setChoice('create')}
-                >
-                  <View style={[componentStyles.flexRow, componentStyles.itemsCenter]}>
-                    <View style={[componentStyles.roundedFull, { 
-                      backgroundColor: colors.primary[100], 
-                      width: spacing[12], 
-                      height: spacing[12], 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      marginRight: spacing[4]
-                    }]}>
-                      <Ionicons name="add-circle-outline" size={spacing[6]} color={colors.primary[500]} />
-                    </View>
-                    <View style={componentStyles.flex1}>
-                      <Text style={[componentStyles.textLg, componentStyles.fontSemibold, componentStyles.textPrimary]}>
-                        Create New Household
-                      </Text>
-                      <Text style={[componentStyles.textSm, componentStyles.textSecondary, { marginTop: spacing[1] }]}>
-                        Start fresh with your own household
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={20} color={colors.neutral[400]} />
-                  </View>
-                </TouchableOpacity>
-
-                {/* Join Existing Household Option */}
-                <TouchableOpacity 
-                  style={componentStyles.card}
-                  onPress={() => setChoice('join')}
-                >
-                  <View style={[componentStyles.flexRow, componentStyles.itemsCenter]}>
-                    <View style={[componentStyles.roundedFull, { 
-                      backgroundColor: colors.success[100], 
-                      width: spacing[12], 
-                      height: spacing[12], 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      marginRight: spacing[4]
-                    }]}>
-                      <Ionicons name="people-outline" size={spacing[6]} color={colors.success[500]} />
-                    </View>
-                    <View style={componentStyles.flex1}>
-                      <Text style={[componentStyles.textLg, componentStyles.fontSemibold, componentStyles.textPrimary]}>
-                        Join Existing Household
-                      </Text>
-                      <Text style={[componentStyles.textSm, componentStyles.textSecondary, { marginTop: spacing[1] }]}>
-                        Join a household with an invite code
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={spacing[5]} color={colors.neutral[400]} />
-                  </View>
-                </TouchableOpacity>
+                <Text style={{
+                  fontSize: 32,
+                  color: colors.primary[500],
+                  fontWeight: 'bold',
+                }}>
+                  🏠
+                </Text>
               </View>
-            )}
 
-            {/* Create Household Form */}
-            {choice === 'create' && (
-              <View style={{ width: '100%', maxWidth: 400, alignSelf: 'center' }}>
-                <View style={[componentStyles.flexRow, componentStyles.itemsCenter, { marginBottom: spacing[6] }]}>
-                  <TouchableOpacity onPress={resetChoice} style={{ marginRight: spacing[3] }}>
-                    <Ionicons name="arrow-back" size={spacing[6]} color={colors.primary[500]} />
-                  </TouchableOpacity>
-                  <Text style={[componentStyles.text2xl, componentStyles.fontSemibold]}>Create New Household</Text>
-                </View>
+              {/* Header */}
+              <View style={{ alignItems: 'center', marginBottom: spacing[8] }}>
+                <Text style={{
+                  fontSize: 28,
+                  fontWeight: 'bold',
+                  color: colors.text.primary,
+                  marginBottom: spacing[2],
+                }}>
+                  Welcome to HomeBuddy!
+                </Text>
+                <Text style={{
+                  fontSize: 16,
+                  color: colors.text.secondary,
+                  textAlign: 'center',
+                }}>
+                  Choose how you'd like to get started
+                </Text>
+              </View>
 
-                <View style={componentStyles.authInputContainer}>
-                  <Text style={componentStyles.authInputLabel}>Household Name</Text>
-                  <View style={componentStyles.authInput}>
-                    <Ionicons name="home-outline" size={spacing[5]} color={colors.neutral[500]} />
-                    <TextInput
-                      style={componentStyles.authInputText}
-                      placeholder="Enter household name"
-                      placeholderTextColor={colors.neutral[400]}
-                      value={householdName}
-                      onChangeText={setHouseholdName}
-                      autoCapitalize="words"
-                      autoCorrect={false}
-                    />
-                  </View>
-                </View>
+              {/* Error Message */}
+              <ErrorMessage message={error} visible={!!error} />
 
-                {/* Household Type Selector */}
-                <View style={componentStyles.authInputContainer}>
-                  <Text style={componentStyles.authInputLabel}>Household Type</Text>
-                  <View style={[componentStyles.flexRow, { gap: spacing[2] }]}>
-                    {([
-                      { type: 'family', icon: 'people', label: 'Family' },
-                      { type: 'flat', icon: 'home', label: 'Flat' },
-                      { type: 'other', icon: 'ellipsis-horizontal', label: 'Other' }
-                    ] as const).map(({ type, icon, label }) => (
-                      <TouchableOpacity
-                        key={type}
-                        style={[
-                          {
-                            flex: 1,
-                            paddingVertical: spacing[3],
-                            paddingHorizontal: spacing[4],
-                            borderRadius: borderRadius.md,
-                            borderWidth: 1,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: spacing[1],
-                          },
-                          householdType === type
-                            ? { backgroundColor: colors.primary[500], borderColor: colors.primary[500] }
-                            : { backgroundColor: colors.background, borderColor: colors.neutral[300] }
-                        ]}
-                        onPress={() => setHouseholdType(type)}
-                      >
-                        <Ionicons 
-                          name={icon as keyof typeof Ionicons.glyphMap} 
-                          size={spacing[4]} 
-                          color={householdType === type ? colors.text.inverse : colors.neutral[500]} 
-                        />
-                        <Text style={[
-                          componentStyles.textSm,
-                          componentStyles.fontMedium,
-                          householdType === type
-                            ? { color: colors.text.inverse }
-                            : { color: colors.text.primary }
-                        ]}>
-                          {label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-
-                {/* Household Image Uploader */}
-                <View style={componentStyles.authInputContainer}>
-                  <Text style={componentStyles.authInputLabel}>Household Image</Text>
-                  <TouchableOpacity
-                    style={[
-                      {
-                        width: '100%',
-                        height: 120,
-                        borderRadius: borderRadius.md,
-                        borderWidth: 2,
-                        borderColor: colors.neutral[300],
-                        borderStyle: 'dashed',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: colors.neutral[50],
-                      },
-                      householdImage && { borderStyle: 'solid', borderColor: colors.primary[500] }
-                    ]}
-                    onPress={pickImage}
+              {/* Choice Selection */}
+              {!choice && (
+                <View style={{ width: '100%' }}>
+                  {/* Create New Household Option */}
+                  <TouchableOpacity 
+                    style={[componentStyles.card, { marginBottom: spacing[4] }]}
+                    onPress={() => setChoice('create')}
                   >
-                    {householdImage ? (
-                      <View style={{ position: 'relative', width: '100%', height: '100%' }}>
-                        <Image
-                          source={{ uri: householdImage }}
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            borderRadius: borderRadius.md - 2,
-                            resizeMode: 'cover',
-                          }}
-                        />
-                        <TouchableOpacity
-                          style={{
-                            position: 'absolute',
-                            top: spacing[1],
-                            right: spacing[1],
-                            backgroundColor: colors.error[500],
-                            borderRadius: borderRadius.full,
-                            width: spacing[6],
-                            height: spacing[6],
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                          onPress={() => setHouseholdImage(null)}
-                        >
-                          <Ionicons name="close" size={spacing[4]} color={colors.text.inverse} />
-                        </TouchableOpacity>
-                      </View>
-                    ) : (
-                      <View style={[componentStyles.flexCol, componentStyles.itemsCenter]}>
-                        <Ionicons name="camera-outline" size={spacing[8]} color={colors.neutral[400]} />
-                        <Text style={[componentStyles.textSm, componentStyles.textSecondary, { marginTop: spacing[2] }]}>
-                          Tap to add photo
+                    <View style={[componentStyles.flexRow, componentStyles.itemsCenter]}>
+                      <View style={componentStyles.flex1}>
+                        <Text style={[componentStyles.textLg, componentStyles.fontSemibold, componentStyles.textPrimary]}>
+                          Create New Household
+                        </Text>
+                        <Text style={[componentStyles.textSm, componentStyles.textSecondary, { marginTop: spacing[1] }]}>
+                          Start fresh with your own household
                         </Text>
                       </View>
-                    )}
+                      <Ionicons name="chevron-forward" size={20} color={colors.neutral[400]} />
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Join Existing Household Option */}
+                  <TouchableOpacity 
+                    style={componentStyles.card}
+                    onPress={() => setChoice('join')}
+                  >
+                    <View style={[componentStyles.flexRow, componentStyles.itemsCenter]}>
+                      <View style={[componentStyles.roundedFull, { 
+                        backgroundColor: colors.success[100], 
+                        width: spacing[12], 
+                        height: spacing[12], 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        marginRight: spacing[4]
+                      }]}>
+                        <Ionicons name="people-outline" size={spacing[6]} color={colors.success[500]} />
+                      </View>
+                      <View style={componentStyles.flex1}>
+                        <Text style={[componentStyles.textLg, componentStyles.fontSemibold, componentStyles.textPrimary]}>
+                          Join Existing Household
+                        </Text>
+                        <Text style={[componentStyles.textSm, componentStyles.textSecondary, { marginTop: spacing[1] }]}>
+                          Join a household with an invite code
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={spacing[5]} color={colors.neutral[400]} />
+                    </View>
                   </TouchableOpacity>
                 </View>
+              )}
 
-                <TouchableOpacity 
-                  style={[componentStyles.authButton, (!householdName.trim() || loading) && componentStyles.authButtonDisabled]} 
-                  onPress={handleCreateHousehold}
-                  disabled={!householdName.trim() || loading}
-                >
-                  <Text style={componentStyles.authButtonText}>
-                    {loading ? 'Creating...' : 'Continue'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {/* Join Household Form */}
-            {choice === 'join' && (
-              <View style={{ width: '100%', maxWidth: 400, alignSelf: 'center' }}>
-                <View style={[componentStyles.flexRow, componentStyles.itemsCenter, { marginBottom: spacing[6] }]}>
-                  <TouchableOpacity onPress={resetChoice} style={{ marginRight: spacing[3] }}>
-                    <Ionicons name="arrow-back" size={spacing[6]} color={colors.primary[500]} />
-                  </TouchableOpacity>
-                  <Text style={[componentStyles.text2xl, componentStyles.fontSemibold]}>Join Household</Text>
-                </View>
-
-                <View style={componentStyles.authInputContainer}>
-                  <Text style={componentStyles.authInputLabel}>Invite Code</Text>
-                  <View style={componentStyles.authInput}>
-                    <Ionicons name="key-outline" size={20} color={colors.neutral[500]} />
-                    <TextInput
-                      style={componentStyles.authInputText}
-                      placeholder="Enter 6-digit invite code"
-                      placeholderTextColor={colors.neutral[400]}
-                      value={inviteCode}
-                      onChangeText={setInviteCode}
-                      autoCapitalize="characters"
-                      autoCorrect={false}
-                      maxLength={6}
-                    />
+              {/* Create Household Form */}
+              {choice === 'create' && (
+                <View style={{ width: '100%' }}>
+                  <View style={[componentStyles.flexRow, componentStyles.itemsCenter, { marginBottom: spacing[6] }]}>
+                    <TouchableOpacity onPress={resetChoice} style={{ marginRight: spacing[3] }}>
+                      <Ionicons name="arrow-back" size={spacing[6]} color={colors.primary[500]} />
+                    </TouchableOpacity>
+                    <Text style={[componentStyles.text2xl, componentStyles.fontSemibold]}>Create New Household</Text>
                   </View>
-                </View>
 
-                <TouchableOpacity 
-                  style={[componentStyles.authButton, (!inviteCode.trim() || loading) && componentStyles.authButtonDisabled]} 
-                  onPress={handleJoinHousehold}
-                  disabled={!inviteCode.trim() || loading}
-                >
-                  <Text style={componentStyles.authButtonText}>
-                    {loading ? 'Joining...' : 'Join Household'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
+                  <View style={componentStyles.authInputContainer}>
+                    <Text style={componentStyles.authInputLabel}>Household Name</Text>
+                    <View style={componentStyles.authInput}>
+                      <Ionicons name="home-outline" size={spacing[5]} color={colors.neutral[500]} />
+                      <TextInput
+                        style={componentStyles.authInputText}
+                        placeholder="Enter household name"
+                        placeholderTextColor={colors.neutral[400]}
+                        value={householdName}
+                        onChangeText={setHouseholdName}
+                        autoCapitalize="words"
+                        autoCorrect={false}
+                      />
+                    </View>
+                  </View>
+
+                  {/* Household Type Selector */}
+                  <View style={componentStyles.authInputContainer}>
+                    <Text style={componentStyles.authInputLabel}>Household Type</Text>
+                    <View style={[componentStyles.flexRow, { gap: spacing[2] }]}>
+                      {([
+                        { type: 'family', icon: 'people', label: 'Family' },
+                        { type: 'flat', icon: 'home', label: 'Flat' },
+                        { type: 'other', icon: 'ellipsis-horizontal', label: 'Other' }
+                      ] as const).map(({ type, icon, label }) => (
+                        <TouchableOpacity
+                          key={type}
+                          style={[
+                            {
+                              flex: 1,
+                              paddingVertical: spacing[3],
+                              paddingHorizontal: spacing[4],
+                              borderRadius: borderRadius.md,
+                              borderWidth: 1,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: spacing[1],
+                            },
+                            householdType === type
+                              ? { backgroundColor: colors.primary[500], borderColor: colors.primary[500] }
+                              : { backgroundColor: colors.background, borderColor: colors.neutral[300] }
+                          ]}
+                          onPress={() => setHouseholdType(type)}
+                        >
+                          <Ionicons 
+                            name={icon as keyof typeof Ionicons.glyphMap} 
+                            size={spacing[4]} 
+                            color={householdType === type ? colors.text.inverse : colors.neutral[500]} 
+                          />
+                          <Text style={[
+                            componentStyles.textSm,
+                            componentStyles.fontMedium,
+                            householdType === type
+                              ? { color: colors.text.inverse }
+                              : { color: colors.text.primary }
+                          ]}>
+                            {label}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+
+                  {/* Household Image Uploader */}
+                  <View style={componentStyles.authInputContainer}>
+                    <Text style={componentStyles.authInputLabel}>Household Image</Text>
+                    <TouchableOpacity
+                      style={[
+                        {
+                          width: '100%',
+                          height: 120,
+                          borderRadius: borderRadius.md,
+                          borderWidth: 2,
+                          borderColor: colors.neutral[300],
+                          borderStyle: 'dashed',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: colors.neutral[50],
+                        },
+                        householdImage && { borderStyle: 'solid', borderColor: colors.primary[500] }
+                      ]}
+                      onPress={pickImage}
+                    >
+                      {householdImage ? (
+                        <View style={{ position: 'relative', width: '100%', height: '100%' }}>
+                          <Image
+                            source={{ uri: householdImage }}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              borderRadius: borderRadius.md - 2,
+                              resizeMode: 'cover',
+                            }}
+                          />
+                          <TouchableOpacity
+                            style={{
+                              position: 'absolute',
+                              top: spacing[1],
+                              right: spacing[1],
+                              backgroundColor: colors.error[500],
+                              borderRadius: borderRadius.full,
+                              width: spacing[6],
+                              height: spacing[6],
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                            onPress={() => setHouseholdImage(null)}
+                          >
+                            <Ionicons name="close" size={spacing[4]} color={colors.text.inverse} />
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <View style={[componentStyles.flexCol, componentStyles.itemsCenter]}>
+                          <Ionicons name="camera-outline" size={spacing[8]} color={colors.neutral[400]} />
+                          <Text style={[componentStyles.textSm, componentStyles.textSecondary, { marginTop: spacing[2] }]}>
+                            Tap to add photo
+                          </Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+
+                  <TouchableOpacity 
+                    style={[componentStyles.authButton, (!householdName.trim() || loading) && componentStyles.authButtonDisabled]} 
+                    onPress={handleCreateHousehold}
+                    disabled={!householdName.trim() || loading}
+                  >
+                    <Text style={componentStyles.authButtonText}>
+                      {loading ? 'Creating...' : 'Continue'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Join Household Form */}
+              {choice === 'join' && (
+                <View style={{ width: '100%' }}>
+                  <View style={[componentStyles.flexRow, componentStyles.itemsCenter, { marginBottom: spacing[6] }]}>
+                    <TouchableOpacity onPress={resetChoice} style={{ marginRight: spacing[3] }}>
+                      <Ionicons name="arrow-back" size={spacing[6]} color={colors.primary[500]} />
+                    </TouchableOpacity>
+                    <Text style={[componentStyles.text2xl, componentStyles.fontSemibold]}>Join Household</Text>
+                  </View>
+
+                  <View style={componentStyles.authInputContainer}>
+                    <Text style={componentStyles.authInputLabel}>Invite Code</Text>
+                    <View style={componentStyles.authInput}>
+                      <Ionicons name="key-outline" size={20} color={colors.neutral[500]} />
+                      <TextInput
+                        style={componentStyles.authInputText}
+                        placeholder="Enter 6-digit invite code"
+                        placeholderTextColor={colors.neutral[400]}
+                        value={inviteCode}
+                        onChangeText={setInviteCode}
+                        autoCapitalize="characters"
+                        autoCorrect={false}
+                        maxLength={6}
+                      />
+                    </View>
+                  </View>
+
+                  <TouchableOpacity 
+                    style={[componentStyles.authButton, (!inviteCode.trim() || loading) && componentStyles.authButtonDisabled]} 
+                    onPress={handleJoinHousehold}
+                    disabled={!inviteCode.trim() || loading}
+                  >
+                    <Text style={componentStyles.authButtonText}>
+                      {loading ? 'Joining...' : 'Join Household'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
           </ScrollView>
         </KeyboardAvoidingView>
       </View>
@@ -751,16 +769,6 @@ export default function HouseholdChoice() {
                   onPress={() => setChoice('create')}
                 >
                   <View style={[componentStyles.flexRow, componentStyles.itemsCenter]}>
-                    <View style={[componentStyles.roundedFull, { 
-                      backgroundColor: colors.primary[100], 
-                      width: spacing[12], 
-                      height: spacing[12], 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      marginRight: spacing[4]
-                    }]}>
-                      <Ionicons name="add-circle-outline" size={spacing[6]} color={colors.primary[500]} />
-                    </View>
                     <View style={componentStyles.flex1}>
                       <Text style={[componentStyles.textLg, componentStyles.fontSemibold, componentStyles.textPrimary]}>
                         Create New Household
@@ -991,11 +999,26 @@ export default function HouseholdChoice() {
 
       {/* Right Panel - Image Slideshow (Desktop Only) */}
       <View style={componentStyles.loginSlideshowPanel}>
-        {/* Current Image */}
-        <Image
-          source={slideshowImages[currentImageIndex]}
-          style={[componentStyles.loginSlideshowImage, { resizeMode: 'cover' }]}
-        />
+        {/* Pre-render all images and control opacity */}
+        {slideshowImages.map((imageSource, index) => (
+          <Animated.View 
+            key={index}
+            style={{ 
+              position: 'absolute', 
+              top: 0, 
+              left: 0, 
+              right: 0, 
+              bottom: 0,
+              opacity: index === currentImageIndex ? fadeAnim : 
+                      index === nextImageIndex ? nextFadeAnim : 0
+            }}
+          >
+            <Image
+              source={imageSource}
+              style={[componentStyles.loginSlideshowImage, { resizeMode: 'cover' }]}
+            />
+          </Animated.View>
+        ))}
         
         {/* Signout Button - Top Right Corner */}
         <TouchableOpacity
@@ -1019,8 +1042,6 @@ export default function HouseholdChoice() {
             Sign Out
           </Text>
         </TouchableOpacity>
-        
-        {/* Content Overlay - Removed text */}
 
         {/* Slideshow Indicators */}
         <View style={componentStyles.loginSlideshowIndicators}>

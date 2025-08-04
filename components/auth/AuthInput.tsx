@@ -29,38 +29,25 @@ const AuthInput = forwardRef<TextInput, AuthInputProps>(({
   ...textInputProps
 }, ref) => {
   return (
-    <View style={componentStyles.mb5}>
-      <Text style={componentStyles.inputLabel}>{label}</Text>
+    <View style={componentStyles.authInputContainer}>
+      <Text style={componentStyles.authInputLabel}>{label}</Text>
       <View style={[
-        componentStyles.flexRow,
-        componentStyles.itemsCenter,
-        componentStyles.input,
+        componentStyles.authInput,
         error ? componentStyles.inputError : null,
-        { minHeight: 34 } // Reduced to 34px overall height
       ]}>
-        <Ionicons name={icon} size={constants.size.icon.medium} color={colors.neutral[500]} />
+        <Ionicons name={icon} size={20} color={colors.neutral[500]} />
         <TextInput
           ref={ref}
-          style={[
-            componentStyles.flex1, 
-            componentStyles.ml3,
-            { 
-              paddingVertical: 2, // 2px vertical padding
-              paddingHorizontal: 0, // No horizontal padding since we have ml3
-              minHeight: 30, // Reduced to fit within 34px container
-              textAlignVertical: 'center' // Center text vertically
-            }
-          ]}
+          style={componentStyles.authInputText}
           placeholderTextColor={colors.neutral[400]}
-          multiline={false} // Ensure single line input
           {...textInputProps}
         />
         {showPasswordToggle && (
-          <TouchableOpacity onPress={onPasswordToggle} style={componentStyles.p1}>
+          <TouchableOpacity onPress={onPasswordToggle}>
             <Ionicons
-              name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-              size={constants.size.icon.medium}
-              color={colors.neutral[500]}
+              name={showPassword ? 'eye-off' : 'eye'}
+              size={20}
+              color={colors.text.secondary}
             />
           </TouchableOpacity>
         )}

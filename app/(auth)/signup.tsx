@@ -8,6 +8,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -145,170 +146,216 @@ export default function Signup() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView
-        style={componentStyles.authContainer}
-        contentContainerStyle={{ flexGrow: 1 }}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={componentStyles.safeArea}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={componentStyles.flex1}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        enabled={true}
       >
-        <View style={componentStyles.authHeader}>
-          <Text style={componentStyles.textXl}>Create Account</Text>
-          <Text style={[componentStyles.textLg, componentStyles.textSecondary]}>
-            Join HomeBuddy to manage your household together
-          </Text>
-        </View>
-
-        <View style={componentStyles.authForm}>
-          {error ? <ErrorMessage message={error} /> : null}
-
-          {/* First Name */}
-          <View style={componentStyles.authInputContainer}>
-            <Text style={componentStyles.authInputLabel}>First Name</Text>
-            <TextInput
-              style={componentStyles.authInput}
-              value={firstName}
-              onChangeText={setFirstName}
-              placeholder="Enter your first name"
-              autoCapitalize="words"
-              autoCorrect={false}
-            />
-          </View>
-
-          {/* Last Name */}
-          <View style={componentStyles.authInputContainer}>
-            <Text style={componentStyles.authInputLabel}>Last Name</Text>
-            <TextInput
-              style={componentStyles.authInput}
-              value={lastName}
-              onChangeText={setLastName}
-              placeholder="Enter your last name"
-              autoCapitalize="words"
-              autoCorrect={false}
-            />
-          </View>
-
-          {/* Email */}
-          <View style={componentStyles.authInputContainer}>
-            <Text style={componentStyles.authInputLabel}>Email</Text>
-            <TextInput
-              style={componentStyles.authInput}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="Enter your email"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
-
-          {/* Password */}
-          <View style={componentStyles.authInputContainer}>
-            <Text style={componentStyles.authInputLabel}>Password</Text>
-            <View style={componentStyles.authInput}>
-              <TextInput
-                style={componentStyles.authInputText}
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Enter your password"
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-              >
-                <Ionicons
-                  name={showPassword ? 'eye-off' : 'eye'}
-                  size={20}
-                  color={colors.text.secondary}
-                />
-              </TouchableOpacity>
+        <ScrollView
+          contentContainerStyle={[
+            componentStyles.mobileAuthScrollView,
+            { 
+              flexGrow: 1,
+              paddingBottom: spacing[20] // Add extra padding at bottom for keyboard
+            }
+          ]}
+          showsVerticalScrollIndicator={true}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={[componentStyles.mobileAuthFormContainer, { justifyContent: 'center' }]}>
+            {/* Logo Space */}
+            <View style={{
+              width: 80,
+              height: 80,
+              borderRadius: 40,
+              backgroundColor: colors.primary[100],
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: spacing[6],
+              alignSelf: 'center',
+            }}>
+              <Text style={{
+                fontSize: 32,
+                color: colors.primary[500],
+                fontWeight: 'bold',
+              }}>
+                🏠
+              </Text>
             </View>
-            {password.length > 0 && password.length < MIN_PASSWORD_LENGTH && (
-              <Text style={componentStyles.textError}>
-                Password must be at least {MIN_PASSWORD_LENGTH} characters
-              </Text>
-            )}
-          </View>
 
-          {/* Confirm Password */}
-          <View style={componentStyles.authInputContainer}>
-            <Text style={componentStyles.authInputLabel}>Confirm Password</Text>
-            <View style={componentStyles.authInput}>
-              <TextInput
-                style={componentStyles.authInputText}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                placeholder="Confirm your password"
-                secureTextEntry={!showConfirmPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <TouchableOpacity
-                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-              >
-                <Ionicons
-                  name={showConfirmPassword ? 'eye-off' : 'eye'}
-                  size={20}
-                  color={colors.text.secondary}
-                />
-              </TouchableOpacity>
+            {/* Header */}
+            <View style={{ alignItems: 'center', marginBottom: spacing[8] }}>
+              <Text style={{
+                fontSize: 28,
+                fontWeight: 'bold',
+                color: colors.text.primary,
+                marginBottom: spacing[2],
+              }}>
+                Create Account
+              </Text>
+              <Text style={{
+                fontSize: 16,
+                color: colors.text.secondary,
+                textAlign: 'center',
+              }}>
+                Join HomeBuddy to manage your household together
+              </Text>
             </View>
-            {confirmPassword.length > 0 && password !== confirmPassword && (
-              <Text style={componentStyles.textError}>
-                Passwords do not match
-              </Text>
-            )}
-          </View>
 
-          {/* Terms and Conditions */}
-          <View style={componentStyles.authTermsContainer}>
-            <TouchableOpacity
-              style={componentStyles.authTermsContainer}
-              onPress={() => setAcceptTerms(!acceptTerms)}
-            >
-              {acceptTerms && (
-                <Ionicons name="checkmark" size={16} color={colors.primary[500]} />
-              )}
-            </TouchableOpacity>
-            <Text style={[componentStyles.textSm, { flex: 1, marginLeft: spacing[2] }]}>
-              I agree to the{' '}
-              <Text style={{ color: colors.primary[500] }}>Terms of Service</Text>
-              {' '}and{' '}
-              <Text style={{ color: colors.primary[500] }}>Privacy Policy</Text>
-            </Text>
-          </View>
+            {/* Error Message */}
+            {error ? <ErrorMessage message={error} /> : null}
 
-          {/* Sign Up Button */}
-          <TouchableOpacity
-            style={[
-              componentStyles.authButton,
-              !isFormValid() && componentStyles.authButtonDisabled
-            ]}
-            onPress={handleSignup}
-            disabled={!isFormValid() || loading}
-          >
-            <Text style={componentStyles.authButtonText}>
-              {loading ? 'Creating Account...' : 'Create Account'}
-            </Text>
-          </TouchableOpacity>
+            {/* Form */}
+            <View style={{ width: '100%' }}>
+              {/* First Name */}
+              <View style={componentStyles.authInputContainer}>
+                <Text style={componentStyles.authInputLabel}>First Name</Text>
+                <TextInput
+                  style={componentStyles.authInput}
+                  value={firstName}
+                  onChangeText={setFirstName}
+                  placeholder="Enter your first name"
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                />
+              </View>
 
-          {/* Login Link */}
-          <View style={componentStyles.authSignLinkContainer}>
-            <Text style={componentStyles.authSignLinkText}>
-              Already have an account?{' '}
-            </Text>
-            <TouchableOpacity onPress={handleLogin}>
-              <Text style={componentStyles.authSignLinkButton}>
-                Sign In
-              </Text>
-            </TouchableOpacity>
+              {/* Last Name */}
+              <View style={componentStyles.authInputContainer}>
+                <Text style={componentStyles.authInputLabel}>Last Name</Text>
+                <TextInput
+                  style={componentStyles.authInput}
+                  value={lastName}
+                  onChangeText={setLastName}
+                  placeholder="Enter your last name"
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                />
+              </View>
+
+              {/* Email */}
+              <View style={componentStyles.authInputContainer}>
+                <Text style={componentStyles.authInputLabel}>Email</Text>
+                <TextInput
+                  style={componentStyles.authInput}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="Enter your email"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+
+              {/* Password */}
+              <View style={componentStyles.authInputContainer}>
+                <Text style={componentStyles.authInputLabel}>Password</Text>
+                <View style={componentStyles.authInput}>
+                  <TextInput
+                    style={componentStyles.authInputText}
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder="Enter your password"
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                  >
+                    <Ionicons
+                      name={showPassword ? 'eye-off' : 'eye'}
+                      size={20}
+                      color={colors.text.secondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+                {password.length > 0 && password.length < MIN_PASSWORD_LENGTH && (
+                  <Text style={componentStyles.textError}>
+                    Password must be at least {MIN_PASSWORD_LENGTH} characters
+                  </Text>
+                )}
+              </View>
+
+              {/* Confirm Password */}
+              <View style={componentStyles.authInputContainer}>
+                <Text style={componentStyles.authInputLabel}>Confirm Password</Text>
+                <View style={componentStyles.authInput}>
+                  <TextInput
+                    style={componentStyles.authInputText}
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    placeholder="Confirm your password"
+                    secureTextEntry={!showConfirmPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    <Ionicons
+                      name={showConfirmPassword ? 'eye-off' : 'eye'}
+                      size={20}
+                      color={colors.text.secondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+                {confirmPassword.length > 0 && password !== confirmPassword && (
+                  <Text style={componentStyles.textError}>
+                    Passwords do not match
+                  </Text>
+                )}
+              </View>
+
+              {/* Terms and Conditions */}
+              <View style={componentStyles.authTermsContainer}>
+                <TouchableOpacity
+                  style={componentStyles.authCheckbox}
+                  onPress={() => setAcceptTerms(!acceptTerms)}
+                >
+                  {acceptTerms && (
+                    <Ionicons name="checkmark" size={14} color="#ffffff" />
+                  )}
+                </TouchableOpacity>
+                <Text style={componentStyles.authTermsText}>
+                  I agree to the{' '}
+                  <Text style={componentStyles.authTermsLink}>Terms of Service</Text>
+                  {' '}and{' '}
+                  <Text style={componentStyles.authTermsLink}>Privacy Policy</Text>
+                </Text>
+              </View>
+
+              {/* Sign Up Button */}
+              <TouchableOpacity
+                style={[
+                  componentStyles.authButton,
+                  !isFormValid() && componentStyles.authButtonDisabled
+                ]}
+                onPress={handleSignup}
+                disabled={!isFormValid() || loading}
+              >
+                <Text style={componentStyles.authButtonText}>
+                  {loading ? 'Creating Account...' : 'Create Account'}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Login Link */}
+              <View style={componentStyles.authSignLinkContainer}>
+                <Text style={componentStyles.authSignLinkText}>
+                  Already have an account?{' '}
+                </Text>
+                <TouchableOpacity onPress={handleLogin}>
+                  <Text style={componentStyles.authSignLinkButton}>
+                    Sign In
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 } 

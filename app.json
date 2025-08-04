@@ -23,7 +23,8 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "HomeBuddy needs camera access to scan QR codes and take photos for household management.",
         "NSPhotoLibraryUsageDescription": "HomeBuddy needs photo library access to select images for household management.",
-        "NSLocationWhenInUseUsageDescription": "HomeBuddy needs location access to provide location-based features for household management."
+        "NSLocationWhenInUseUsageDescription": "HomeBuddy needs location access to provide location-based features for household management.",
+        "NSUserNotificationsUsageDescription": "HomeBuddy needs notification permissions to send you important updates about your household activities."
       }
     },
     "android": {
@@ -38,7 +39,8 @@
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION"
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS"
       ]
     },
     "web": {
