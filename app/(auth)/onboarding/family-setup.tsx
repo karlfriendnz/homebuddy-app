@@ -9,6 +9,7 @@ import {
   Platform,
   KeyboardAvoidingView,
   Image,
+  ImageBackground,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -16,7 +17,9 @@ import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
 import { componentStyles, colors, spacing, borderRadius, typography } from '../../../styles/global';
 import { IconSymbol } from '../../../components/ui/IconSymbol';
+import { BannerImage } from '../../../components/ui';
 import { DateOfBirthPicker } from '../../../components/ui/DatePicker';
+import { ImageCropper } from '../../../components/ui/ImageCropper';
 
 interface FamilyMember {
   id: string;
@@ -36,12 +39,28 @@ export default function FamilySetup() {
   const { user } = useAuth();
   const { householdId, householdName } = useLocalSearchParams<{ householdId: string; householdName: string }>();
   
-  const [activeTab, setActiveTab] = useState<'add' | 'list'>('add');
+  const [activeTab, setActiveTab] = useState<'add' | 'list'>('list');
+  const [phase, setPhase] = useState<'profile' | 'members'>('profile');
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  
+  // Validation state
+  const [validationErrors, setValidationErrors] = useState<{
+    first_name?: string;
+    last_name?: string;
+    date_of_birth?: string;
+    email?: string;
+    phone?: string;
+  }>({});
+  const [isValidating, setIsValidating] = useState(false);
+  const [householdInfo, setHouseholdInfo] = useState<{ id: string; name: string; image_url?: string | null; household_type?: string | null } | null>(null);
+  
+  // Profile image crop modal state
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [cropImageUri, setCropImageUri] = useState<string | null>(null);
   
   // Ref for first name input focus
   const firstNameInputRef = useRef<TextInput>(null);
@@ -54,7 +73,7 @@ export default function FamilySetup() {
     email: '',
     phone: '',
     date_of_birth: '',
-    gender: 'prefer_not_to_say',
+    gender: 'female',
     role: 'adult',
     profile_picture: '',
   });
@@ -82,7 +101,7 @@ export default function FamilySetup() {
         email: user.email || '',
         phone: '',
         date_of_birth: '',
-        gender: 'prefer_not_to_say',
+        gender: 'female',
         role: 'admin',
         profile_picture: '',
       });
@@ -97,6 +116,22 @@ export default function FamilySetup() {
 
     return () => clearTimeout(timer);
   }, []);
+
+  // Fetch household info for header (image, type)
+  useEffect(() => {
+    const fetchHousehold = async () => {
+      if (!householdId) return;
+      try {
+        const { data, error } = await supabase
+          .from('households')
+          .select('id, name, image_url, household_type')
+          .eq('id', householdId)
+          .single();
+        if (!error && data) setHouseholdInfo(data as any);
+      } catch {}
+    };
+    fetchHousehold();
+  }, [householdId]);
 
   // Function to send invite email
   const sendInviteEmail = async (email: string, firstName: string, lastName: string, role: string) => {
@@ -151,34 +186,137 @@ export default function FamilySetup() {
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
+      allowsEditing: false, // We'll handle cropping ourselves
       quality: 0.8,
     });
 
     if (!result.canceled && result.assets[0]) {
-      setNewMember(prev => ({
-        ...prev,
-        profile_picture: result.assets[0].uri
-      }));
+      setCropImageUri(result.assets[0].uri);
+      setShowCropModal(true);
     }
   };
 
-  const addFamilyMember = async () => {
-    if (!newMember.first_name?.trim() || !newMember.last_name?.trim()) {
-      setError('First name and last name are required');
+  const handleCropComplete = async (croppedImageUri: string) => {
+    try {
+      // Update the user's avatar URL in Supabase
+      if (user) {
+        const { error } = await supabase.auth.updateUser({
+          data: { 
+            avatar_url: croppedImageUri,
+            profile_picture: croppedImageUri // Also store in profile_picture for consistency
+          }
+        });
+        
+        if (error) {
+          console.error('Error updating avatar URL:', error);
+          Alert.alert('Error', 'Failed to update profile picture. Please try again.');
+        } else {
+          console.log('Avatar URL updated successfully');
+          
+          // Refresh the user session to get updated metadata
+          const { data: { session }, error: refreshError } = await supabase.auth.getSession();
+          if (refreshError) {
+            console.error('Error refreshing session:', refreshError);
+          } else {
+            console.log('Session refreshed with updated metadata');
+          }
+        }
+      }
+      
+      // Update the local state for the form
+      setNewMember(prev => ({
+        ...prev,
+        profile_picture: croppedImageUri
+      }));
+      
+      // Update the first family member (current user) in the family members list
+      setFamilyMembers(prev => {
+        if (prev.length > 0 && prev[0].id === user?.id) {
+          const updatedMembers = [...prev];
+          updatedMembers[0] = {
+            ...updatedMembers[0],
+            profile_picture: croppedImageUri
+          };
+          return updatedMembers;
+        }
+        return prev;
+      });
+      
+      setShowCropModal(false);
+      setCropImageUri(null);
+    } catch (error) {
+      console.error('Error in handleCropComplete:', error);
+      Alert.alert('Error', 'Failed to save profile picture. Please try again.');
+    }
+  };
+
+  const handleCropCancel = () => {
+    setShowCropModal(false);
+    setCropImageUri(null);
+  };
+
+  const savePrimaryProfile = async () => {
+    // Validate form before proceeding
+    if (!validateForm()) {
+      setError('Please fix the validation errors before continuing');
       return;
     }
 
-    if (!newMember.date_of_birth?.trim()) {
-      setError('Date of birth is required');
+    // Update the primary user's entry in the list (index 0)
+    setFamilyMembers(prev => {
+      if (prev.length === 0) return prev;
+      const updated = [...prev];
+      updated[0] = {
+        id: prev[0].id,
+        first_name: newMember.first_name!.trim(),
+        last_name: newMember.last_name!.trim(),
+        nickname: newMember.nickname?.trim() || undefined,
+        email: newMember.email?.trim() || undefined,
+        phone: newMember.phone?.trim() || undefined,
+        date_of_birth: newMember.date_of_birth || '',
+        gender: newMember.gender || 'prefer_not_to_say',
+        role: 'admin',
+        profile_picture: newMember.profile_picture || undefined,
+        is_temp: false,
+      } as FamilyMember;
+      return updated;
+    });
+
+    // Reset form (including image and DOB) and move to members phase
+    setNewMember({
+      first_name: '',
+      last_name: '',
+      nickname: '',
+      email: '',
+      phone: '',
+      date_of_birth: '',
+      gender: 'prefer_not_to_say',
+      role: 'adult',
+      profile_picture: '',
+    });
+    setCropImageUri(null);
+    setShowCropModal(false);
+    setValidationErrors({});
+    setError('');
+    setSuccessMessage('Your profile has been updated. You can now add family members.');
+
+    setPhase('members');
+    setActiveTab('list');
+
+    setTimeout(() => setSuccessMessage(''), 5000);
+  };
+
+  const addFamilyMember = async () => {
+    // Validate form before proceeding
+    if (!validateForm()) {
+      setError('Please fix the validation errors before continuing');
       return;
     }
 
     const member: FamilyMember = {
       id: editingIndex !== null ? familyMembers[editingIndex].id : `temp_${Date.now()}`,
-      first_name: newMember.first_name.trim(),
-      last_name: newMember.last_name.trim(),
+      first_name: newMember.first_name!.trim(),
+      last_name: newMember.last_name!.trim(),
       nickname: newMember.nickname?.trim() || undefined,
       email: newMember.email?.trim() || undefined,
       phone: newMember.phone?.trim() || undefined,
@@ -196,7 +334,7 @@ export default function FamilySetup() {
         ? `Great! ${displayName} has been updated.`
         : `Great! ${displayName} has been added to your family members.`;
     
-    if (member.email && householdId) {
+    if (member.email && householdId && member.role !== 'admin' && member.id !== user?.id) {
       try {
         await sendInviteEmail(member.email, member.first_name, member.last_name, member.role);
         successMessage = `Great! ${displayName} has been added and an invite email has been sent.`;
@@ -216,7 +354,7 @@ export default function FamilySetup() {
       setFamilyMembers([...familyMembers, member]);
     }
     
-    // Reset form
+    // Reset form (including image and DOB)
     setNewMember({
       first_name: '',
       last_name: '',
@@ -228,16 +366,21 @@ export default function FamilySetup() {
       role: 'adult',
       profile_picture: '',
     });
+    setCropImageUri(null);
+    setShowCropModal(false);
+    setValidationErrors({});
     
     setError('');
     setSuccessMessage(successMessage);
     
+    // Switch to family members tab after save
+    setActiveTab('list');
+    setPhase('members');
+
     // Clear success message after 5 seconds
     setTimeout(() => {
       setSuccessMessage('');
     }, 5000);
-    
-    // Don't switch tabs, stay on add tab
   };
 
   const removeFamilyMember = (index: number) => {
@@ -289,6 +432,27 @@ export default function FamilySetup() {
     
     // Set editing state
     setEditingIndex(index);
+  };
+
+  // Start adding a brand new family member with an empty form
+  const startAddFamilyMember = () => {
+    setActiveTab('add');
+    setEditingIndex(null);
+    setNewMember({
+      first_name: '',
+      last_name: '',
+      nickname: '',
+      email: '',
+      phone: '',
+      date_of_birth: '',
+      gender: 'prefer_not_to_say',
+      role: 'adult',
+      profile_picture: '',
+    });
+    setCropImageUri(null);
+    setShowCropModal(false);
+    setValidationErrors({});
+    setError('');
   };
 
   const handleContinue = async () => {
@@ -399,6 +563,24 @@ export default function FamilySetup() {
         message += `\n\n⚠️ ${failedInvites} invite${failedInvites > 1 ? 's' : ''} failed to send.`;
       }
 
+      // Mark household onboarding as completed
+      if (householdId) {
+        try {
+          const { error: updateError } = await supabase
+            .from('households')
+            .update({ onboarding_completed: true })
+            .eq('id', householdId);
+
+          if (updateError) {
+            console.error('Error updating household onboarding status:', updateError);
+          } else {
+            console.log('✅ Household onboarding marked as completed');
+          }
+        } catch (error) {
+          console.error('Error updating household onboarding status:', error);
+        }
+      }
+
       console.log('🎉 Family setup complete! Message:', message);
       console.log('📧 Invite count:', inviteCount, 'Failed invites:', failedInvites);
       
@@ -415,24 +597,88 @@ export default function FamilySetup() {
     }
   };
 
-  const handleSkip = () => {
-    Alert.alert(
-      'Skip Family Setup',
-      'You can always add family members later from the household settings.',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        },
-        {
-          text: 'Skip for Now',
-          onPress: () => {
-            console.log('🏠 Skipping family setup, navigating to homepage...');
-            router.replace('/(tabs)?fromOnboarding=true&setupSkipped=true');
-          }
+  // Validation functions
+  const validateField = (field: string, value: string): string | undefined => {
+    switch (field) {
+      case 'first_name':
+        if (!value.trim()) return 'First name is required';
+        if (value.trim().length < 2) return 'First name must be at least 2 characters';
+        if (value.trim().length > 50) return 'First name must be less than 50 characters';
+        if (!/^[a-zA-Z\s'-]+$/.test(value.trim())) return 'First name can only contain letters, spaces, hyphens, and apostrophes';
+        return undefined;
+      
+      case 'last_name':
+        if (!value.trim()) return 'Last name is required';
+        if (value.trim().length < 2) return 'Last name must be at least 2 characters';
+        if (value.trim().length > 50) return 'Last name must be less than 50 characters';
+        if (!/^[a-zA-Z\s'-]+$/.test(value.trim())) return 'Last name can only contain letters, spaces, hyphens, and apostrophes';
+        return undefined;
+      
+      case 'date_of_birth':
+        if (!value) return 'Date of birth is required';
+        const birthDate = new Date(value);
+        const today = new Date();
+        const age = today.getFullYear() - birthDate.getFullYear();
+        if (age < 0 || age > 120) return 'Please enter a valid date of birth';
+        if (age < 13) return 'Must be at least 13 years old';
+        return undefined;
+      
+      case 'email':
+        if (value && value.trim()) {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(value.trim())) return 'Please enter a valid email address';
         }
-      ]
-    );
+        return undefined;
+      
+      case 'phone':
+        if (value && value.trim()) {
+          const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+          if (!phoneRegex.test(value.replace(/[\s\-\(\)]/g, ''))) return 'Please enter a valid phone number';
+        }
+        return undefined;
+      
+      default:
+        return undefined;
+    }
+  };
+
+  const validateForm = (): boolean => {
+    setIsValidating(true);
+    const errors: typeof validationErrors = {};
+    
+    // Validate required fields
+    const firstNameError = validateField('first_name', newMember.first_name || '');
+    if (firstNameError) errors.first_name = firstNameError;
+    
+    const lastNameError = validateField('last_name', newMember.last_name || '');
+    if (lastNameError) errors.last_name = lastNameError;
+    
+    const dateOfBirthError = validateField('date_of_birth', newMember.date_of_birth || '');
+    if (dateOfBirthError) errors.date_of_birth = dateOfBirthError;
+    
+    // Validate optional fields if they have values
+    if (newMember.email) {
+      const emailError = validateField('email', newMember.email);
+      if (emailError) errors.email = emailError;
+    }
+    
+    if (newMember.phone) {
+      const phoneError = validateField('phone', newMember.phone);
+      if (phoneError) errors.phone = phoneError;
+    }
+    
+    setValidationErrors(errors);
+    setIsValidating(false);
+    
+    return Object.keys(errors).length === 0;
+  };
+
+  const clearFieldError = (field: string) => {
+    setValidationErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[field as keyof typeof validationErrors];
+      return newErrors;
+    });
   };
 
   const roleOptions = [
@@ -445,8 +691,8 @@ export default function FamilySetup() {
   ];
 
   const genderOptions = [
-    { value: 'male', label: 'Male' },
     { value: 'female', label: 'Female' },
+    { value: 'male', label: 'Male' },
     { value: 'other', label: 'Other' },
     { value: 'prefer_not_to_say', label: 'Prefer not to say' },
   ];
@@ -454,75 +700,134 @@ export default function FamilySetup() {
   const renderAddTab = () => (
     <View>
         <View style={{ marginBottom: spacing[6] }}>
-          <Text style={[componentStyles.fontMedium, componentStyles.textSecondary, { marginBottom: spacing[2] }]}>
+          <Text style={[componentStyles.textLg, componentStyles.fontSemibold, { marginBottom: spacing[4] }]}>
+            {phase === 'profile' ? 'Update your profile' : 'Add new member'}
+          </Text>
+          <Text style={componentStyles.globalLabel}>
             Profile Picture (optional)
           </Text>
-          <TouchableOpacity
-            onPress={pickImage}
-            style={[
-              { width: 100, height: 100, borderRadius: 50 },
-              { borderWidth: 2, borderColor: colors.border, borderStyle: 'dashed' },
-              componentStyles.itemsCenter,
-              componentStyles.justifyCenter,
-              { backgroundColor: colors.neutral[50] }
-            ]}
-          >
-            {newMember.profile_picture ? (
-              <Image
-                source={{ uri: newMember.profile_picture }}
-                style={{ width: 96, height: 96, borderRadius: 48 }}
-              />
-            ) : (
-              <Text style={[componentStyles.textSecondary, componentStyles.textCenter]}>
-                📷
-              </Text>
+          <View style={[componentStyles.flexRow, componentStyles.itemsCenter, { gap: spacing[3] }]}>
+            <TouchableOpacity
+              onPress={pickImage}
+              style={[
+                { width: 100, height: 100, borderRadius: 50 },
+                { borderWidth: 2, borderColor: colors.border, borderStyle: 'dashed' },
+                componentStyles.itemsCenter,
+                componentStyles.justifyCenter,
+                { backgroundColor: colors.neutral[50] }
+              ]}
+            >
+              {(newMember.profile_picture) ? (
+                <View style={{ 
+                  width: 96, 
+                  height: 96, 
+                  borderRadius: 48, 
+                  overflow: 'hidden',
+                  backgroundColor: colors.neutral[100]
+                }}>
+                  <Image
+                    source={{ uri: newMember.profile_picture }}
+                    style={{ 
+                      width: 96, 
+                      height: 96,
+                      resizeMode: 'cover'
+                    }}
+                    onError={(error) => console.error('Image load error:', error)}
+                    onLoad={() => console.log('Profile image loaded successfully')}
+                  />
+                </View>
+              ) : (
+                <Text style={[componentStyles.textSecondary, componentStyles.textCenter]}>
+                  📷
+                </Text>
+              )}
+            </TouchableOpacity>
+            
+            {(newMember.profile_picture) && (
+              <TouchableOpacity
+                onPress={pickImage}
+                style={[
+                  { backgroundColor: colors.primary[500] },
+                  { paddingHorizontal: spacing[3] },
+                  { paddingVertical: spacing[2] },
+                  { borderRadius: borderRadius.md },
+                  componentStyles.itemsCenter,
+                  componentStyles.justifyCenter
+                ]}
+              >
+                <Text style={[componentStyles.fontMedium, componentStyles.textInverse, componentStyles.textSm]}>
+                  Update image
+                </Text>
+              </TouchableOpacity>
             )}
-          </TouchableOpacity>
+          </View>
         </View>
 
         <View style={{ marginBottom: spacing[4] }}>
           <View style={[componentStyles.flexRow, { gap: spacing[3], marginBottom: spacing[3] }]}>
             <View style={componentStyles.flex1}>
-              <Text style={[componentStyles.fontMedium, componentStyles.textSecondary, { marginBottom: spacing[1] }]}>
+              <Text style={componentStyles.globalLabel}>
                 First Name *
               </Text>
               <TextInput
                 ref={firstNameInputRef}
                 style={[
-                  componentStyles.authInput,
-                  { marginLeft: 0 }
+                  componentStyles.inputSimple,
+                  { marginLeft: 0 },
+                  validationErrors.first_name && { borderColor: colors.error[500] }
                 ]}
                 value={newMember.first_name || ''}
-                onChangeText={(text) => setNewMember(prev => ({ ...prev, first_name: text }))}
+                onChangeText={(text) => {
+                  setNewMember(prev => ({ ...prev, first_name: text }));
+                  if (validationErrors.first_name) {
+                    clearFieldError('first_name');
+                  }
+                }}
                 placeholder="First name"
                 placeholderTextColor={colors.neutral[400]}
                 autoFocus={true}
               />
+              {validationErrors.first_name && (
+                <Text style={[componentStyles.textSm, { color: colors.error[500], marginTop: spacing[1] }]}>
+                  {validationErrors.first_name}
+                </Text>
+              )}
             </View>
             <View style={componentStyles.flex1}>
-              <Text style={[componentStyles.fontMedium, componentStyles.textSecondary, { marginBottom: spacing[1] }]}>
+              <Text style={componentStyles.globalLabel}>
                 Last Name *
               </Text>
               <TextInput
                 style={[
-                  componentStyles.authInput,
-                  { marginLeft: 0 }
+                  componentStyles.inputSimple,
+                  { marginLeft: 0 },
+                  validationErrors.last_name && { borderColor: colors.error[500] }
                 ]}
                 value={newMember.last_name || ''}
-                onChangeText={(text) => setNewMember(prev => ({ ...prev, last_name: text }))}
+                onChangeText={(text) => {
+                  setNewMember(prev => ({ ...prev, last_name: text }));
+                  if (validationErrors.last_name) {
+                    clearFieldError('last_name');
+                  }
+                }}
                 placeholder="Last name"
                 placeholderTextColor={colors.neutral[400]}
               />
+              {validationErrors.last_name && (
+                <Text style={[componentStyles.textSm, { color: colors.error[500], marginTop: spacing[1] }]}>
+                  {validationErrors.last_name}
+                </Text>
+              )}
             </View>
           </View>
 
           <View>
-            <Text style={[componentStyles.fontMedium, componentStyles.textSecondary, { marginBottom: spacing[1] }]}>
+            <Text style={componentStyles.globalLabel}>
               Nickname (optional)
             </Text>
             <TextInput
               style={[
-                componentStyles.authInput,
+                componentStyles.inputSimple,
                 { marginLeft: 0 }
               ]}
               value={newMember.nickname || ''}
@@ -534,60 +839,80 @@ export default function FamilySetup() {
         </View>
 
         <View style={{ marginBottom: spacing[4] }}>
-          <Text style={[componentStyles.fontSemibold, componentStyles.textLg, { marginBottom: spacing[3] }]}>
-            Contact Information
-          </Text>
-          
           <View style={{ marginBottom: spacing[3] }}>
-            <Text style={[componentStyles.fontMedium, componentStyles.textSecondary, { marginBottom: spacing[1] }]}>
+            <Text style={componentStyles.globalLabel}>
               Email (optional)
             </Text>
             <TextInput
               style={[
-                componentStyles.authInput,
-                { marginLeft: 0 }
+                componentStyles.inputSimple,
+                { marginLeft: 0 },
+                validationErrors.email && { borderColor: colors.error[500] }
               ]}
               value={newMember.email || ''}
-              onChangeText={(text) => setNewMember(prev => ({ ...prev, email: text }))}
+              onChangeText={(text) => {
+                setNewMember(prev => ({ ...prev, email: text }));
+                if (validationErrors.email) {
+                  clearFieldError('email');
+                }
+              }}
               placeholder="email@example.com"
               placeholderTextColor={colors.neutral[400]}
               keyboardType="email-address"
               autoCapitalize="none"
             />
+            {validationErrors.email && (
+              <Text style={[componentStyles.textSm, { color: colors.error[500], marginTop: spacing[1] }]}>
+                {validationErrors.email}
+              </Text>
+            )}
           </View>
 
           <View>
-            <Text style={[componentStyles.fontMedium, componentStyles.textSecondary, { marginBottom: spacing[1] }]}>
+            <Text style={componentStyles.globalLabel}>
               Phone Number (optional)
             </Text>
             <TextInput
               style={[
-                componentStyles.authInput,
-                { marginLeft: 0 }
+                componentStyles.inputSimple,
+                { marginLeft: 0 },
+                validationErrors.phone && { borderColor: colors.error[500] }
               ]}
               value={newMember.phone || ''}
-              onChangeText={(text) => setNewMember(prev => ({ ...prev, phone: text }))}
+              onChangeText={(text) => {
+                setNewMember(prev => ({ ...prev, phone: text }));
+                if (validationErrors.phone) {
+                  clearFieldError('phone');
+                }
+              }}
               placeholder="(555) 123-4567"
               placeholderTextColor={colors.neutral[400]}
               keyboardType="phone-pad"
             />
+            {validationErrors.phone && (
+              <Text style={[componentStyles.textSm, { color: colors.error[500], marginTop: spacing[1] }]}>
+                {validationErrors.phone}
+              </Text>
+            )}
           </View>
         </View>
 
         <View style={{ marginBottom: spacing[4] }}>
-          <Text style={[componentStyles.fontSemibold, componentStyles.textLg, { marginBottom: spacing[3] }]}>
-            Personal Information
-          </Text>
-          
           <DateOfBirthPicker
             label="Date of Birth"
             value={newMember.date_of_birth}
-            onChange={(date) => setNewMember(prev => ({ ...prev, date_of_birth: date }))}
+            onChange={(date) => {
+              setNewMember(prev => ({ ...prev, date_of_birth: date }));
+              if (validationErrors.date_of_birth) {
+                clearFieldError('date_of_birth');
+              }
+            }}
             required={true}
+            error={validationErrors.date_of_birth}
           />
 
           <View>
-            <Text style={[componentStyles.fontMedium, componentStyles.textSecondary, { marginBottom: spacing[2] }]}>
+            <Text style={componentStyles.globalLabel}>
               Gender
             </Text>
             <View style={[componentStyles.flexRow, { flexWrap: 'wrap', gap: spacing[2] }]}>
@@ -596,10 +921,11 @@ export default function FamilySetup() {
                   key={gender.value}
                   onPress={() => setNewMember(prev => ({ ...prev, gender: gender.value as any }))}
                   style={[
-                    { paddingHorizontal: spacing[3] },
-                    { paddingVertical: spacing[2] },
+                    { paddingHorizontal: spacing[4] },
+                    { paddingVertical: spacing[3] },
                     { borderRadius: borderRadius.md },
                     { borderWidth: 1 },
+                    { justifyContent: 'center' },
                     newMember.gender === gender.value
                       ? [{ backgroundColor: colors.primary[500] }, { borderColor: colors.primary[500] }]
                       : [{ backgroundColor: colors.neutral[100] }, { borderColor: colors.border }]
@@ -622,57 +948,46 @@ export default function FamilySetup() {
           </View>
         </View>
 
-        <View style={{ marginBottom: spacing[6] }}>
-          <Text style={[componentStyles.fontSemibold, componentStyles.textLg, { marginBottom: spacing[3] }]}>
-            Role
-          </Text>
-          <View style={[componentStyles.flexRow, { flexWrap: 'wrap', gap: spacing[2] }]}>
-            {roleOptions.map((role) => (
-              <TouchableOpacity
-                key={role.value}
-                onPress={() => setNewMember(prev => ({ ...prev, role: role.value as any }))}
-                style={[
-                  { paddingHorizontal: spacing[3] },
-                  { paddingVertical: spacing[2] },
-                  { borderRadius: borderRadius.md },
-                  { borderWidth: 1 },
-                  newMember.role === role.value
-                    ? [{ backgroundColor: colors.primary[500] }, { borderColor: colors.primary[500] }]
-                    : [{ backgroundColor: colors.neutral[100] }, { borderColor: colors.border }]
-                ]}
-              >
-                <Text
+        {phase !== 'profile' && (
+          <View style={{ marginBottom: spacing[6] }}>
+            <Text style={componentStyles.globalLabel}>
+              Role
+            </Text>
+            <View style={[componentStyles.flexRow, { flexWrap: 'wrap', gap: spacing[2] }]}> 
+              {roleOptions.map((role) => (
+                <TouchableOpacity
+                  key={role.value}
+                  onPress={() => setNewMember(prev => ({ ...prev, role: role.value as any }))}
                   style={[
-                    componentStyles.fontMedium,
-                    componentStyles.textSm,
+                    { paddingHorizontal: spacing[4] },
+                    { paddingVertical: spacing[3] },
+                    { borderRadius: borderRadius.md },
+                    { borderWidth: 1 },
+                    { justifyContent: 'center' },
                     newMember.role === role.value
-                      ? componentStyles.textInverse
-                      : componentStyles.textSecondary
+                      ? [{ backgroundColor: colors.primary[500] }, { borderColor: colors.primary[500] }]
+                      : [{ backgroundColor: colors.neutral[100] }, { borderColor: colors.border }]
                   ]}
                 >
-                  {role.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    style={[
+                      componentStyles.fontMedium,
+                      componentStyles.textSm,
+                      newMember.role === role.value
+                        ? componentStyles.textInverse
+                        : componentStyles.textSecondary
+                    ]}
+                  >
+                    {role.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={[componentStyles.textSm, componentStyles.textSecondary, { marginTop: spacing[1] }]}> 
+              {roleOptions.find(r => r.value === newMember.role)?.description || ''}
+            </Text>
           </View>
-          <Text style={[componentStyles.textSm, componentStyles.textSecondary, { marginTop: spacing[1] }]}>
-            {roleOptions.find(r => r.value === newMember.role)?.description || ''}
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          onPress={addFamilyMember}
-          style={[
-            { backgroundColor: colors.primary[500] },
-            { padding: spacing[4] },
-            { borderRadius: borderRadius.lg },
-            componentStyles.itemsCenter
-          ]}
-        >
-          <Text style={[componentStyles.fontSemibold, componentStyles.textInverse]}>
-            {editingIndex !== null ? 'Update Family Member' : 'Add Family Member'}
-          </Text>
-        </TouchableOpacity>
+        )}
 
         {successMessage && successMessage.trim() ? (
           <View style={[
@@ -806,54 +1121,59 @@ export default function FamilySetup() {
             </Text>
           </View>
         )}
+
+        {/* Add another family member button below the list */}
+        {(familyMembers || []).length > 0 && (
+          <View style={{ marginTop: spacing[4], marginBottom: spacing[2] }}>
+            <TouchableOpacity
+              onPress={startAddFamilyMember}
+              style={[
+                { backgroundColor: colors.primary[500] },
+                { padding: spacing[4] },
+                { borderRadius: borderRadius.lg },
+                componentStyles.itemsCenter
+              ]}
+            >
+              <Text style={[componentStyles.fontSemibold, componentStyles.textInverse]}>Add Family Member</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Actions moved to fixed footer (continue button) */}
       </View>
   );
 
   return (
-    <View style={componentStyles.safeArea}>
-      {/* Fixed Header */}
-      <View style={[componentStyles.itemsCenter, { 
-        paddingTop: spacing[6], 
-        paddingBottom: spacing[4],
-        backgroundColor: colors.background,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.neutral[200]
-      }]}>
-        <Text style={[componentStyles.textXl, componentStyles.fontBold, componentStyles.textCenter, { marginBottom: spacing[2] }]}>
-          Welcome to {householdName && householdName.trim() ? householdName : 'your household'}!
-        </Text>
-        <Text style={[componentStyles.textLg, componentStyles.textSecondary, componentStyles.textCenter]}>
-          Let's set up your family members
-        </Text>
-      </View>
+    <View style={[componentStyles.safeArea, { backgroundColor: colors.neutral[50] }]}>
+      {/* Fixed Header - using shared BannerImage */}
+      <BannerImage
+        imageUrl={householdInfo?.image_url || undefined}
+        height={160}
+        maxWidth={800}
+        radius={borderRadius.md}
+        placeholder={(
+          <View style={[componentStyles.itemsCenter, { flex: 1, justifyContent: 'center', backgroundColor: colors.background }] }>
+            <Text style={[componentStyles.textXl, componentStyles.fontBold, componentStyles.textCenter, { marginBottom: spacing[1] }]}> 
+              Welcome to {(householdInfo?.name || (householdName as string) || 'your household') as string}!
+            </Text>
+            <Text style={[componentStyles.textLg, componentStyles.textSecondary, componentStyles.textCenter]}>
+              Let's set up your family members
+            </Text>
+          </View>
+        )}
+      />
 
-      {/* Tab Navigation */}
+      {/* Tab Navigation - hidden until members phase */}
+      {phase === 'members' && (
       <View style={[componentStyles.flexRow, { 
         marginBottom: spacing[4],
         backgroundColor: colors.background,
         borderBottomWidth: 1,
-        borderBottomColor: colors.neutral[200]
-      }]}>
-        <TouchableOpacity
-          onPress={() => setActiveTab('add')}
-          style={[
-            componentStyles.flex1,
-            { paddingVertical: spacing[3] },
-            { borderBottomWidth: 2 },
-            activeTab === 'add' 
-              ? { borderBottomColor: colors.primary[500] }
-              : { borderBottomColor: colors.neutral[200] }
-          ]}
-        >
-          <Text style={[
-            componentStyles.fontSemibold,
-            componentStyles.textCenter,
-            activeTab === 'add' ? componentStyles.textPrimary : componentStyles.textSecondary
-          ]}>
-            Add
-          </Text>
-        </TouchableOpacity>
-        
+        borderBottomColor: colors.neutral[200],
+        width: '100%',
+        maxWidth: 800,
+        alignSelf: 'center'
+      }]}> 
         <TouchableOpacity
           onPress={() => setActiveTab('list')}
           style={[
@@ -873,7 +1193,28 @@ export default function FamilySetup() {
             Family Members ({(familyMembers || []).length})
           </Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setActiveTab('add')}
+          style={[
+            componentStyles.flex1,
+            { paddingVertical: spacing[3] },
+            { borderBottomWidth: 2 },
+            activeTab === 'add' 
+              ? { borderBottomColor: colors.primary[500] }
+              : { borderBottomColor: colors.neutral[200] }
+          ]}
+        >
+          <Text style={[
+            componentStyles.fontSemibold,
+            componentStyles.textCenter,
+            activeTab === 'add' ? componentStyles.textPrimary : componentStyles.textSecondary
+          ]}>
+            Add
+          </Text>
+        </TouchableOpacity>
       </View>
+      )}
 
       {/* Scrollable Content */}
       <KeyboardAvoidingView
@@ -893,8 +1234,8 @@ export default function FamilySetup() {
           showsVerticalScrollIndicator={true}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={{ width: '100%', maxWidth: 400, alignSelf: 'center' }}>
-            {activeTab === 'add' ? renderAddTab() : renderListTab()}
+          <View style={{ width: '100%', maxWidth: 800, alignSelf: 'center' }}>
+            {phase === 'profile' ? renderAddTab() : (activeTab === 'add' ? renderAddTab() : renderListTab())}
 
             {error && error.trim() ? (
               <View style={{ paddingBottom: spacing[4] }}>
@@ -907,7 +1248,7 @@ export default function FamilySetup() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Fixed Bottom Buttons */}
+      {/* Fixed Bottom Buttons - show in both phases with appropriate action */}
       <View style={{
         position: 'absolute',
         bottom: 0,
@@ -920,40 +1261,91 @@ export default function FamilySetup() {
         paddingVertical: spacing[4],
         paddingBottom: spacing[6], // Extra padding for safe area
       }}>
-        <View style={[componentStyles.flexRow, { gap: spacing[3] }]}>
-          <TouchableOpacity
-            onPress={handleSkip}
-            style={[
-              componentStyles.flex1,
-              { backgroundColor: colors.neutral[200] },
-              { padding: spacing[4] },
-              { borderRadius: borderRadius.lg },
-              componentStyles.itemsCenter
-            ]}
-          >
-            <Text style={[componentStyles.fontSemibold, componentStyles.textSecondary]}>
-              Skip for Now
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            onPress={handleContinue}
-            disabled={loading}
-            style={[
-              componentStyles.flex1,
-              { backgroundColor: colors.primary[500] },
-              { padding: spacing[4] },
-              { borderRadius: borderRadius.lg },
-              componentStyles.itemsCenter,
-              loading && { opacity: 0.5 }
-            ]}
-          >
-            <Text style={[componentStyles.fontSemibold, componentStyles.textInverse]}>
-              {loading ? 'Setting Up...' : 'Continue to Home'}
-            </Text>
-          </TouchableOpacity>
+        <View style={[componentStyles.flexRow, { gap: spacing[3], width: '100%', maxWidth: 800, alignSelf: 'center' }]}> 
+          {phase === 'profile' && (
+            <TouchableOpacity
+              onPress={savePrimaryProfile}
+              disabled={loading}
+              style={[
+                componentStyles.flex1,
+                { backgroundColor: colors.primary[500] },
+                { padding: spacing[4] },
+                { borderRadius: borderRadius.lg },
+                componentStyles.itemsCenter,
+                loading && { opacity: 0.5 }
+              ]}
+            >
+              <Text style={[componentStyles.fontSemibold, componentStyles.textInverse]}>Save & update my profile</Text>
+            </TouchableOpacity>
+          )}
+
+          {phase === 'members' && activeTab === 'add' && (
+            <>
+              <TouchableOpacity
+                onPress={addFamilyMember}
+                disabled={loading}
+                style={[
+                  componentStyles.flex1,
+                  { backgroundColor: colors.primary[500] },
+                  { padding: spacing[4] },
+                  { borderRadius: borderRadius.lg },
+                  componentStyles.itemsCenter,
+                  loading && { opacity: 0.5 }
+                ]}
+              >
+                <Text style={[componentStyles.fontSemibold, componentStyles.textInverse]}>
+                  {editingIndex !== null ? 'Update family member' : 'Save family member'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setActiveTab('list')}
+                style={[
+                  componentStyles.flex1,
+                  { backgroundColor: colors.neutral[100] },
+                  { borderWidth: 1, borderColor: colors.border },
+                  { padding: spacing[4] },
+                  { borderRadius: borderRadius.lg },
+                  componentStyles.itemsCenter
+                ]}
+              >
+                <Text style={[componentStyles.fontSemibold, componentStyles.textPrimary]}>Back to family list</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {phase === 'members' && activeTab === 'list' && (
+            <>
+              <TouchableOpacity
+                onPress={handleContinue}
+                disabled={loading}
+                style={[
+                  componentStyles.flex1,
+                  { backgroundColor: colors.primary[500] },
+                  { padding: spacing[4] },
+                  { borderRadius: borderRadius.lg },
+                  componentStyles.itemsCenter,
+                  loading && { opacity: 0.5 }
+                ]}
+              >
+                <Text style={[componentStyles.fontSemibold, componentStyles.textInverse]}>
+                  {loading ? 'Setting Up...' : "I've finished adding my family members"}
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </View>
+
+      {/* Profile Image Crop Modal */}
+      <ImageCropper
+        visible={showCropModal}
+        imageUri={cropImageUri}
+        onCropComplete={handleCropComplete}
+        onCancel={handleCropCancel}
+        cropShape="circle"
+        cropSize={200}
+        title="Crop Profile Picture"
+      />
     </View>
   );
 } 

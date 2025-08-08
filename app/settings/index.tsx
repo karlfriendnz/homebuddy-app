@@ -1,11 +1,17 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Alert, TextInput, Image, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { componentStyles, colors, spacing } from '../../styles/global';
+import { componentStyles, colors, spacing, borderRadius } from '../../styles/global';
 import { useAuth } from '../../contexts/AuthContext';
-import { trackScreen } from '@/lib/posthog';
+import { trackScreen } from '../../lib/posthog';
 import { supabase } from '../../lib/supabase';
+import { globalSignOut } from '../../lib/auth-utils';
+import { ImageCropper } from '../../components/ui/ImageCropper';
+import { GlobalHeader } from '../../components/ui';
+import BottomNavigation from '../../components/ui/BottomNavigation';
+import AuthGuard from '../../components/auth/AuthGuard';
+import * as ImagePicker from 'expo-image-picker';
 
 interface SettingsItem {
   id: string;
@@ -20,27 +26,35 @@ export default function SettingsScreen() {
   const { user, signOut } = useAuth();
   const [userHousehold, setUserHousehold] = React.useState<any>(null);
   const [userRole, setUserRole] = React.useState<string | null>(null);
+  const [userHouseholds, setUserHouseholds] = React.useState<Array<{ role: string; household: any }>>([]);
   const [loading, setLoading] = React.useState(true);
   const [showDeleteHouseholdModal, setShowDeleteHouseholdModal] = React.useState(false);
   const [deleteHouseholdPassword, setDeleteHouseholdPassword] = React.useState('');
   const [deleteHouseholdLoading, setDeleteHouseholdLoading] = React.useState(false);
   const [deleteAllMembers, setDeleteAllMembers] = React.useState(false);
 
+  
+  // Profile picture state
+  const [showCropModal, setShowCropModal] = React.useState(false);
+  const [cropImageUri, setCropImageUri] = React.useState<string | null>(null);
+  
+
+
   React.useEffect(() => {
     trackScreen('Settings Screen');
   }, [user]);
 
-  // Get user's household and role
+  // Get user's households and roles
   React.useEffect(() => {
-    const getUserHousehold = async () => {
+    const getUserHouseholds = async () => {
       if (!user) {
         setLoading(false);
         return;
       }
 
       try {
-        // Get user's household membership
-        const { data: membership, error } = await supabase
+        // Get all household memberships for this user
+        const { data: memberships, error } = await supabase
           .from('household_members')
           .select(`
             role,
@@ -48,19 +62,24 @@ export default function SettingsScreen() {
               id,
               name,
               household_type,
-              created_by
+              created_by,
+              image_url
             )
           `)
           .eq('user_id', user.id)
-          .single();
+          .order('joined_at', { ascending: true });
 
-        if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
-          console.error('Error fetching household:', error);
+        if (error) {
+          console.error('Error fetching households:', error);
         }
 
-        if (membership) {
-          setUserHousehold(membership.household);
-          setUserRole(membership.role);
+        const safeMemberships = Array.isArray(memberships) ? memberships : (memberships ? [memberships] : []);
+        setUserHouseholds(safeMemberships as Array<{ role: string; household: any }>);
+
+        // Maintain existing single-household dependent features by selecting the first membership, if any
+        if (safeMemberships.length > 0) {
+          setUserHousehold(safeMemberships[0].household);
+          setUserRole(safeMemberships[0].role);
         }
       } catch (error) {
         console.error('Error getting user household:', error);
@@ -69,22 +88,24 @@ export default function SettingsScreen() {
       }
     };
 
-    getUserHousehold();
+    getUserHouseholds();
   }, [user]);
 
   const handleSignOut = async () => {
-    // For web, we'll skip the confirmation dialog and sign out directly
-    // since Alert.alert doesn't work well on web
     try {
+      // Show loading state
+      console.log('Signing out...');
+      
+      // Use context signOut to ensure app state clears
       await signOut();
-      router.replace('/(auth)/login');
+      
+      console.log('Sign out successful, redirecting to login...');
     } catch (error) {
       console.error('Sign out error:', error);
-      Alert.alert(
-        'Sign Out Error',
-        'There was an error signing out. Please try again.',
-        [{ text: 'OK' }]
-      );
+      
+      // Even if there's an error, try to redirect to login
+      console.log('Redirecting to login despite error...');
+      router.replace('/(auth)/login');
     }
   };
 
@@ -193,35 +214,34 @@ export default function SettingsScreen() {
         return;
       }
 
-      // If user wants to delete all members, do that first
-      if (deleteAllMembers) {
-        const { error: membersError } = await supabase
-          .from('household_members')
-          .delete()
-          .eq('household_id', userHousehold.id);
-
-        if (membersError) {
-          console.error('Error deleting household members:', membersError);
-          Alert.alert(
-            'Error',
-            'Failed to delete household members. Please try again.',
-            [{ text: 'OK' }]
-          );
-          return;
-        }
-      }
-
-      // Delete the household (this will cascade delete all related data)
-      const { error: householdError } = await supabase
-        .from('households')
+      // Always delete household members first to avoid FK constraint issues
+      const { error: membersError } = await supabase
+        .from('household_members')
         .delete()
-        .eq('id', userHousehold.id);
+        .eq('household_id', userHousehold.id);
 
-      if (householdError) {
-        console.error('Error deleting household:', householdError);
+      if (membersError) {
+        console.error('Error deleting household members:', membersError);
         Alert.alert(
           'Error',
-          'Failed to delete household. Please try again.',
+          'Failed to delete household members. Please try again.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Delete the household and ensure at least one row was deleted
+      const { data: deletedRows, error: householdError } = await supabase
+        .from('households')
+        .delete()
+        .eq('id', userHousehold.id)
+        .select('id');
+
+      if (householdError || !deletedRows || deletedRows.length === 0) {
+        console.error('Error deleting household or no row deleted:', householdError);
+        Alert.alert(
+          'Error',
+          'Failed to delete household. Please ensure you are the household admin and try again.',
           [{ text: 'OK' }]
         );
         return;
@@ -263,14 +283,66 @@ export default function SettingsScreen() {
     setDeleteHouseholdLoading(false);
   };
 
+  // Profile picture functions
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false, // We'll handle cropping ourselves
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setCropImageUri(result.assets[0].uri);
+      setShowCropModal(true);
+    }
+  };
+
+  const handleCropComplete = async (croppedImageUri: string) => {
+    try {
+      // Update the user's avatar URL in Supabase
+      if (user) {
+        const { error } = await supabase.auth.updateUser({
+          data: { 
+            avatar_url: croppedImageUri,
+            profile_picture: croppedImageUri // Also store in profile_picture for consistency
+          }
+        });
+        
+        if (error) {
+          console.error('Error updating avatar URL:', error);
+          Alert.alert('Error', 'Failed to update profile picture. Please try again.');
+        } else {
+          console.log('Avatar URL updated successfully');
+          Alert.alert('Success', 'Profile picture updated successfully!');
+        }
+      }
+      
+      setShowCropModal(false);
+      setCropImageUri(null);
+    } catch (error) {
+      console.error('Error in handleCropComplete:', error);
+      Alert.alert('Error', 'Failed to save profile picture. Please try again.');
+    }
+  };
+
+  const handleCropCancel = () => {
+    setShowCropModal(false);
+    setCropImageUri(null);
+  };
+
+
+
+
+
+  // All settings items in one list
   const settingsItems: SettingsItem[] = [
     {
-      id: 'household',
+      id: 'household-settings',
       title: 'Household Settings',
       subtitle: 'Manage your household and family members',
-      icon: 'people',
+      icon: 'home',
       onPress: () => {
-        Alert.alert('Coming Soon', 'Household settings will be available soon!');
+        router.push('/settings/household');
       },
     },
     {
@@ -279,9 +351,29 @@ export default function SettingsScreen() {
       subtitle: 'Update your personal information',
       icon: 'person',
       onPress: () => {
-        Alert.alert('Coming Soon', 'Profile settings will be available soon!');
+        router.push('/settings/profile');
       },
     },
+    {
+      id: 'create-household',
+      title: 'Create New Household',
+      subtitle: 'Start a new household',
+      icon: 'add-circle',
+      onPress: () => {
+        router.push('/(auth)/onboarding/household-choice');
+      },
+      color: colors.primary[500],
+    },
+    // Map each membership to a row
+    ...userHouseholds.map((m) => ({
+      id: `household-${m.household?.id}`,
+      title: m.household?.name || 'Untitled Household',
+      subtitle: `Role: ${m.role || 'member'}`,
+      icon: 'home' as keyof typeof Ionicons.glyphMap,
+      onPress: () => {
+        Alert.alert('Household Info', `${m.household?.name || 'Household'}\nType: ${m.household?.household_type || 'n/a'}\nRole: ${m.role}`);
+      },
+    } as SettingsItem)),
     {
       id: 'notifications',
       title: 'Notifications',
@@ -289,15 +381,6 @@ export default function SettingsScreen() {
       icon: 'notifications',
       onPress: () => {
         Alert.alert('Coming Soon', 'Notification settings will be available soon!');
-      },
-    },
-    {
-      id: 'privacy',
-      title: 'Privacy & Security',
-      subtitle: 'Manage your privacy settings',
-      icon: 'shield-checkmark',
-      onPress: () => {
-        Alert.alert('Coming Soon', 'Privacy settings will be available soon!');
       },
     },
     {
@@ -322,21 +405,26 @@ export default function SettingsScreen() {
         );
       },
     },
-    // Only show delete household option for admins
-    ...(userRole === 'admin' && userHousehold ? [{
-      id: 'delete-household',
-      title: 'Delete Household',
-              subtitle: `Delete "${userHousehold.name || 'your household'}" and all its data`,
-      icon: 'home' as keyof typeof Ionicons.glyphMap,
-      onPress: handleDeleteHousehold,
-      color: colors.error[700],
-    }] : []),
     {
       id: 'signout',
       title: 'Sign Out',
       subtitle: 'Sign out of your account',
       icon: 'log-out',
-      onPress: handleSignOut,
+      onPress: () => {
+        if (Platform.OS === 'web') {
+          const confirmed = typeof window !== 'undefined' ? window.confirm('Are you sure you want to sign out?') : true;
+          if (confirmed) handleSignOut();
+        } else {
+          Alert.alert(
+            'Sign Out',
+            'Are you sure you want to sign out?',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Sign Out', style: 'destructive', onPress: handleSignOut },
+            ]
+          );
+        }
+      },
       color: colors.error[500],
     },
     {
@@ -417,74 +505,41 @@ export default function SettingsScreen() {
   }
 
   return (
-    <View style={componentStyles.safeArea}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={[
-          componentStyles.itemsCenter,
-          { 
-            paddingTop: spacing[8], 
-            paddingBottom: spacing[6], 
-            paddingHorizontal: spacing[6] 
-          }
-        ]}>
+    <AuthGuard>
+      <View style={componentStyles.safeArea}>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {/* Global Header */}
+          <GlobalHeader 
+            title="Settings"
+            showBackButton={false}
+            showHelp={true}
+          />
+
+          {/* Settings Items */}
+          <View style={{ marginBottom: spacing[6] }}>
+            {settingsItems.map(renderSettingsItem)}
+          </View>
+
+          {/* User Info */}
           <View style={[
-            componentStyles.roundedFull,
+            componentStyles.itemsCenter,
             { 
-              backgroundColor: colors.primary[100], 
-              width: spacing[16], 
-              height: spacing[16], 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              marginBottom: spacing[4]
+              paddingHorizontal: spacing[6], 
+              paddingBottom: spacing[8] 
             }
           ]}>
-            <Ionicons name="settings" size={spacing[8]} color={colors.primary[500]} />
+            <Text style={[componentStyles.textSm, componentStyles.textSecondary]}>
+              Signed in as
+            </Text>
+            <Text style={[
+              componentStyles.text, 
+              componentStyles.fontMedium, 
+              componentStyles.textPrimary
+            ]}>
+              {user?.email || ''}
+            </Text>
           </View>
-          
-          <Text style={[
-            componentStyles.textXl, 
-            componentStyles.fontBold, 
-            componentStyles.textPrimary, 
-            { marginBottom: spacing[2] }
-          ]}>
-            Settings
-          </Text>
-          
-          <Text style={[
-            componentStyles.textLg, 
-            componentStyles.textSecondary, 
-            { textAlign: 'center' }
-          ]}>
-            Manage your HomeBuddy preferences
-          </Text>
-        </View>
-
-        {/* Settings Items */}
-        <View style={{ marginBottom: spacing[6] }}>
-          {settingsItems.map(renderSettingsItem)}
-        </View>
-
-        {/* User Info */}
-        <View style={[
-          componentStyles.itemsCenter,
-          { 
-            paddingHorizontal: spacing[6], 
-            paddingBottom: spacing[8] 
-          }
-        ]}>
-          <Text style={[componentStyles.textSm, componentStyles.textSecondary]}>
-            Signed in as
-          </Text>
-          <Text style={[
-            componentStyles.text, 
-            componentStyles.fontMedium, 
-            componentStyles.textPrimary
-          ]}>
-            {user?.email || ''}
-          </Text>
-        </View>
-      </ScrollView>
+        </ScrollView>
 
       {/* Delete Household Confirmation Modal */}
       {showDeleteHouseholdModal && (
@@ -575,14 +630,10 @@ export default function SettingsScreen() {
                 Enter your password to confirm:
               </Text>
               <TextInput
-                style={{
-                  borderWidth: 1,
-                  borderColor: colors.neutral[300],
-                  borderRadius: spacing[2],
-                  padding: spacing[3],
-                  fontSize: 16,
-                  backgroundColor: colors.background,
-                }}
+                style={[
+                  componentStyles.inputSimple,
+                  { borderColor: colors.neutral[300] }
+                ]}
                 placeholder="Enter your password"
                 value={deleteHouseholdPassword}
                 onChangeText={setDeleteHouseholdPassword}
@@ -637,6 +688,21 @@ export default function SettingsScreen() {
           </View>
         </View>
       )}
+
+      {/* Profile Image Crop Modal */}
+      <ImageCropper
+        visible={showCropModal}
+        imageUri={cropImageUri}
+        onCropComplete={handleCropComplete}
+        onCancel={handleCropCancel}
+        cropShape="circle"
+        cropSize={200}
+        title="Crop Profile Picture"
+      />
+
+      {/* Bottom Navigation */}
+      <BottomNavigation />
     </View>
+    </AuthGuard>
   );
 }

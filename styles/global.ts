@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 
 // ============================================================================
 // COLOR PALETTE
@@ -7,16 +7,16 @@ import { StyleSheet } from 'react-native';
 export const colors = {
   // Primary Colors
   primary: {
-    50: '#eef2ff',
-    100: '#e0e7ff',
-    200: '#c7d2fe',
-    300: '#a5b4fc',
-    400: '#818cf8',
-    500: '#6366f1', // Main brand color
-    600: '#4f46e5',
-    700: '#4338ca',
-    800: '#3730a3',
-    900: '#312e81',
+    50: '#f3f0ff',
+    100: '#e8e3ff',
+    200: '#d1c7ff',
+    300: '#b39dff',
+    400: '#8b5cf6',
+    500: '#511eb9', // Main brand color
+    600: '#4c1d95',
+    700: '#3d1a7a',
+    800: '#2e1460',
+    900: '#1f0e47',
   },
 
   // Neutral Colors
@@ -261,7 +261,7 @@ export const componentStyles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingTop: 30, 
+    paddingTop: Platform.OS === 'web' ? 0 : 30, 
   },
   
   screenContainer: {
@@ -437,16 +437,42 @@ export const componentStyles = StyleSheet.create({
   // INPUTS
   // ============================================================================
   
-  input: {
+  // Type 1: Simple text input (border on input field itself)
+  inputSimple: {
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[3],
-    backgroundColor: colors.surface,
+    borderColor: colors.neutral[300],
+    borderRadius: 6,
+    paddingHorizontal: spacing[3],
+    height: 44,
+    backgroundColor: colors.neutral[50],
     fontSize: typography.size.base,
     color: colors.text.primary,
-    minHeight: layout.inputHeight.md,
+  },
+  
+  // Type 2: Input with icon (border on container, transparent input)
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.neutral[300],
+    borderRadius: 6,
+    paddingHorizontal: spacing[3],
+    height: 44,
+    backgroundColor: colors.neutral[50],
+  },
+  
+  inputWithIcon: {
+    flex: 1,
+    fontSize: typography.size.base,
+    color: colors.text.primary,
+    lineHeight: 20,
+    borderWidth: 0,
+    borderColor: 'transparent',
+    backgroundColor: 'transparent',
+  },
+  
+  inputIcon: {
+    marginRight: spacing[2],
   },
   
   inputError: {
@@ -463,6 +489,14 @@ export const componentStyles = StyleSheet.create({
     fontWeight: typography.weight.semibold,
     color: colors.text.primary,
     marginBottom: spacing[2],
+  },
+  
+  // Global label style - semi-bold, 6px above element
+  globalLabel: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+    color: colors.text.primary,
+    marginBottom: 6, // 6px above element
   },
   
   inputErrorText: {
@@ -688,58 +722,21 @@ export const componentStyles = StyleSheet.create({
     lineHeight: 24,
   },
 
-  // Form styles
-  authForm: {
+  // Universal form styles - Expo best practices
+  form: {
     flex: 1,
   },
-  authInputContainer: {
-    marginBottom: spacing[5],
+  formGroup: {
+    marginBottom: spacing[4],
   },
-  authInputLabel: {
+  formLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.text.primary,
     marginBottom: spacing[2],
   },
-  authInput: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.neutral[200],
-    borderRadius: 8,
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[5], // Increased from spacing[4] to spacing[5] for more comfortable touch
-    backgroundColor: colors.background,
-    minHeight: 64, // Increased from 56 to 64 for better mobile usability
-  },
-  authInputText: {
-    flex: 1,
-    fontSize: 18, // Increased from 16 to 18 for better mobile readability
-    color: colors.text.primary,
-    marginLeft: spacing[3],
-    lineHeight: 22, // Increased line height for better text rendering
-  },
 
-  // Button styles
-  authButton: {
-    borderRadius: 8,
-    paddingVertical: spacing[5], // Increased from spacing[4] to spacing[5]
-    paddingHorizontal: spacing[6],
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 64, // Increased from 56 to 64 for consistency with inputs
-    backgroundColor: colors.primary[500],
-    marginTop: spacing[6], // Add top margin for spacing from fields
-    marginBottom: spacing[6],
-  },
-  authButtonDisabled: {
-    backgroundColor: colors.neutral[400],
-  },
-  authButtonText: {
-    fontSize: 18, // Increased from 16 to 18 for better mobile readability
-    fontWeight: '600',
-    color: '#ffffff',
-  },
+
 
   // Link styles
   authLink: {

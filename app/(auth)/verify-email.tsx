@@ -85,13 +85,13 @@ export default function VerifyEmail() {
           )}
 
           {/* Form */}
-          <View style={componentStyles.authForm}>
-            <View style={componentStyles.authInputContainer}>
-              <Text style={componentStyles.authInputLabel}>Email Address</Text>
-              <View style={componentStyles.authInput}>
-                <Ionicons name="mail-outline" size={spacing[5]} color={colors.neutral[500]} />
+          <View style={componentStyles.form}>
+            <View style={{ marginBottom: spacing[4] }}>
+              <Text style={componentStyles.globalLabel}>Email Address</Text>
+              <View style={componentStyles.inputContainer}>
+                <Ionicons name="mail-outline" size={spacing[5]} color={colors.neutral[500]} style={componentStyles.inputIcon} />
                 <TextInput
-                  style={componentStyles.authInputText}
+                  style={componentStyles.inputWithIcon}
                   placeholder="Enter your email address"
                   placeholderTextColor={colors.neutral[400]}
                   value={email}
@@ -105,20 +105,20 @@ export default function VerifyEmail() {
             </View>
 
             <TouchableOpacity 
-              style={[componentStyles.authButton, (!email.trim() || loading) && componentStyles.authButtonDisabled]} 
+              style={[componentStyles.buttonPrimary, (!email.trim() || loading) && componentStyles.buttonDisabled]} 
               onPress={handleResendVerification}
               disabled={!email.trim() || loading}
             >
-              <Text style={componentStyles.authButtonText}>
+              <Text style={componentStyles.buttonText}>
                 {loading ? 'Sending...' : 'Resend Verification Email'}
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={[componentStyles.authButton, { backgroundColor: 'transparent', marginTop: spacing[3] }]} 
+              style={[componentStyles.buttonPrimary, { backgroundColor: 'transparent', marginTop: spacing[3] }]} 
               onPress={handleBackToLogin}
             >
-              <Text style={[componentStyles.authButtonText, { color: colors.primary[500] }]}>
+              <Text style={[componentStyles.buttonText, { color: colors.primary[500] }]}>
                 Back to Login
               </Text>
             </TouchableOpacity>

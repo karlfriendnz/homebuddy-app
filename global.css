@@ -1,0 +1,252 @@
+/* Global CSS overrides for generated classes */
+
+.r-paddingBlock-dd0y9b {
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
+}
+
+/* More specific override in case the class name changes */
+[class*="r-paddingBlock"] {
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
+}
+
+/* Additional specificity for React Native Web generated classes */
+.r-paddingBlock-dd0y9b,
+.r-paddingBlock-dd0y9b * {
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
+}
+
+/* Override any element with 20px padding to be 16px */
+*[style*="padding-top: 20px"],
+*[style*="padding-bottom: 20px"],
+*[style*="padding: 20px"] {
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
+}
+
+/* Additional override for any React Native Web generated padding classes */
+[class*="paddingBlock"] {
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
+}
+
+/* Remove min-height from generated minHeight classes */
+.r-minHeight-adacv {
+  min-height: unset !important;
+}
+
+/* General override for any minHeight classes */
+[class*="minHeight"] {
+  min-height: unset !important;
+}
+
+/* Prevent horizontal scrolling */
+html, body {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+}
+
+/* Ensure all containers respect viewport width */
+* {
+  box-sizing: border-box !important;
+}
+
+/* Prevent horizontal scroll on React Native Web containers */
+[data-rn-root] {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+}
+
+/* Ensure modals don't cause horizontal scroll */
+[role="dialog"] {
+  max-width: 100vw !important;
+  overflow-x: hidden !important;
+}
+
+/* ============================================================================
+   GLOBAL INPUT STYLING SYSTEM
+   ============================================================================ */
+
+/* Global CSS Reset for Focus Styles */
+* {
+  box-sizing: border-box;
+}
+
+/* ============================================================================
+   COMPREHENSIVE FOCUS STYLE REMOVAL
+   ============================================================================ */
+
+/* Remove all focus outlines and borders from ALL input types */
+input:focus,
+textarea:focus,
+select:focus,
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="search"]:focus,
+input[type="tel"]:focus,
+input[type="url"]:focus,
+input[type="number"]:focus,
+input[type="date"]:focus,
+input[type="time"]:focus,
+input[type="datetime-local"]:focus,
+input[type="month"]:focus,
+input[type="week"]:focus,
+input[type="color"]:focus,
+input[type="file"]:focus,
+input[type="range"]:focus,
+input[type="checkbox"]:focus,
+input[type="radio"]:focus,
+input[type="submit"]:focus,
+input[type="button"]:focus,
+input[type="reset"]:focus,
+input[type="image"]:focus,
+input[type="hidden"]:focus {
+  outline: none !important;
+  border-color: inherit !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+}
+
+/* Remove focus ring for modern browsers */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+input[type="text"]:focus-visible,
+input[type="email"]:focus-visible,
+input[type="password"]:focus-visible,
+input[type="search"]:focus-visible,
+input[type="tel"]:focus-visible,
+input[type="url"]:focus-visible,
+input[type="number"]:focus-visible,
+input[type="date"]:focus-visible,
+input[type="time"]:focus-visible,
+input[type="datetime-local"]:focus-visible,
+input[type="month"]:focus-visible,
+input[type="week"]:focus-visible,
+input[type="color"]:focus-visible,
+input[type="file"]:focus-visible,
+input[type="range"]:focus-visible,
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible,
+input[type="submit"]:focus-visible,
+input[type="button"]:focus-visible,
+input[type="reset"]:focus-visible,
+input[type="image"]:focus-visible,
+input[type="hidden"]:focus-visible {
+  outline: none !important;
+  border-color: inherit !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+}
+
+/* Remove webkit and moz specific focus styles */
+input:focus,
+textarea:focus,
+select:focus {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  -khtml-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+}
+
+/* Remove focus styling from any element with data attributes */
+[data-focus],
+[data-focus-visible],
+[data-focus-within] {
+  outline: none !important;
+  border-color: inherit !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+}
+
+/* Remove any focus-within styling from containers */
+*:focus-within {
+  outline: none !important;
+  border-color: inherit !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+}
+
+/* Remove React Native Web specific focus styles */
+[data-testid*="input"]:focus,
+[data-testid*="text-input"]:focus,
+[data-testid*="TextInput"]:focus {
+  outline: none !important;
+  border-color: inherit !important;
+  box-shadow: none !important;
+}
+
+/* ============================================================================
+   CONSISTENT INPUT HEIGHTS
+   ============================================================================ */
+
+/* Ensure all inputs have consistent height */
+input,
+textarea,
+select {
+  height: 44px !important;
+  min-height: 44px !important;
+  max-height: 44px !important;
+  line-height: 44px !important;
+  padding: 0 12px !important;
+  margin: 0 !important;
+  border-radius: 6px !important;
+  border: 1px solid #e5e7eb !important;
+  background-color: #ffffff !important;
+  font-size: 16px !important;
+  font-family: inherit !important;
+  color: #111827 !important;
+}
+
+/* ============================================================================
+   PLATFORM SPECIFIC OVERRIDES
+   ============================================================================ */
+
+/* iOS Safari specific overrides */
+@supports (-webkit-touch-callout: none) {
+  input,
+  textarea,
+  select {
+    -webkit-appearance: none !important;
+    border-radius: 6px !important;
+  }
+}
+
+/* Android Chrome specific overrides */
+@supports (-webkit-appearance: none) and (not (overflow: -webkit-marquee)) {
+  input,
+  textarea,
+  select {
+    -webkit-appearance: none !important;
+    border-radius: 6px !important;
+  }
+}
+
+/* Base styles */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}

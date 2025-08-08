@@ -51,12 +51,16 @@
     <string>HomeBuddy needs camera access to scan QR codes and take photos for household management.</string>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>HomeBuddy needs location access to provide location-based features for household management.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Allow $(PRODUCT_NAME) to access your microphone</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>HomeBuddy needs photo library access to select images for household management.</string>
     <key>NSUserActivityTypes</key>
     <array>
       <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>
     </array>
+    <key>NSUserNotificationsUsageDescription</key>
+    <string>HomeBuddy needs notification permissions to send you important updates about your household activities.</string>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
     <key>UIRequiredDeviceCapabilities</key>

@@ -1,9 +1,11 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { PostHogProvider } from 'posthog-js/react';
 import { useEffect } from 'react';
-import { posthog } from '@/lib/posthog';
+import { View } from 'react-native';
+import { posthog } from '../lib/posthog';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { householdUtils } from '../lib/supabase-utils';
+import '../global.css';
 
 function RootLayoutNav() {
   const { user, loading } = useAuth();
@@ -16,13 +18,35 @@ function RootLayoutNav() {
     const inAuthGroup = segments[0] === '(auth)';
     const inTabsGroup = segments[0] === '(tabs)';
 
+    console.log('🔍 Routing Debug:', { 
+      user: !!user, 
+      loading, 
+      segments, 
+      inAuthGroup, 
+      inTabsGroup,
+      currentPath: segments.join('/')
+    });
+
+    // TEMPORARILY DISABLED: Auth routing logic to fix login loop
+    // Only redirect unauthenticated users away from protected routes
     if (!user && !inAuthGroup) {
       // User is not authenticated and not in auth group, redirect to login
+      console.log('🔄 Redirecting unauthenticated user to login');
       router.replace('/(auth)/login');
-    } else if (user && inAuthGroup) {
+    }
+    
+    // TODO: Re-enable auth routing logic after fixing the loop issue
+    /*
+    else if (user && inAuthGroup) {
       // User is authenticated but in auth group, check if they need to set up household
       if (segments[1] === 'verify-email') {
         // User is on verification screen, don't redirect
+        return;
+      }
+      
+      // Allow login page to be accessed even when authenticated (for sign out functionality)
+      if (segments[1] === 'login') {
+        // User is on login page, don't redirect
         return;
       }
       
@@ -56,6 +80,7 @@ function RootLayoutNav() {
       
       checkHouseholdAndRedirect();
     }
+    */
   }, [user, loading, segments, router]);
 
   if (loading) {
@@ -72,16 +97,19 @@ function RootLayoutNav() {
     <Stack>
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="settings" options={{ headerShown: false }} />
     </Stack>
   );
 }
 
 export default function RootLayout() {
   return (
-    <PostHogProvider client={posthog as any || undefined}>
-      <AuthProvider>
-        <RootLayoutNav />
-      </AuthProvider>
-    </PostHogProvider>
+    <View style={{ flex: 1 }}>
+      <PostHogProvider client={posthog as any || undefined}>
+        <AuthProvider>
+          <RootLayoutNav />
+        </AuthProvider>
+      </PostHogProvider>
+    </View>
   );
 }

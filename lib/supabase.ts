@@ -59,6 +59,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+    flowType: 'pkce',
   },
   db: {
     schema: 'public',
@@ -81,10 +82,8 @@ export type Database = {
           first_name: string;
           last_name: string;
           avatar_url: string | null;
-          role: 'admin' | 'adult' | 'teen' | 'child';
           invite_code_used: string | null;
           email_verified: boolean;
-          onboarding_completed: boolean;
           last_active_at: string;
           is_active: boolean;
           notification_preferences: any;
@@ -98,10 +97,8 @@ export type Database = {
           first_name: string;
           last_name: string;
           avatar_url?: string | null;
-          role?: 'admin' | 'adult' | 'teen' | 'child';
           invite_code_used?: string | null;
           email_verified?: boolean;
-          onboarding_completed?: boolean;
           last_active_at?: string;
           is_active?: boolean;
           notification_preferences?: any;
@@ -115,10 +112,8 @@ export type Database = {
           first_name?: string;
           last_name?: string;
           avatar_url?: string | null;
-          role?: 'admin' | 'adult' | 'teen' | 'child';
           invite_code_used?: string | null;
           email_verified?: boolean;
-          onboarding_completed?: boolean;
           last_active_at?: string;
           is_active?: boolean;
           notification_preferences?: any;
@@ -136,6 +131,9 @@ export type Database = {
           created_by: string | null;
           created_at: string;
           updated_at: string;
+          household_type: string | null;
+          image_url: string | null;
+          onboarding_completed: boolean;
         };
         Insert: {
           id?: string;
@@ -145,6 +143,9 @@ export type Database = {
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;
+          household_type?: string | null;
+          image_url?: string | null;
+          onboarding_completed?: boolean;
         };
         Update: {
           id?: string;
@@ -154,6 +155,9 @@ export type Database = {
           created_by?: string | null;
           created_at?: string;
           updated_at?: string;
+          household_type?: string | null;
+          image_url?: string | null;
+          onboarding_completed?: boolean;
         };
       };
       household_members: {

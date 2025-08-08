@@ -29,16 +29,16 @@ const AuthInput = forwardRef<TextInput, AuthInputProps>(({
   ...textInputProps
 }, ref) => {
   return (
-    <View style={componentStyles.authInputContainer}>
-      <Text style={componentStyles.authInputLabel}>{label}</Text>
+    <View style={componentStyles.inputContainer}>
+      <Text style={componentStyles.inputLabel}>{label}</Text>
       <View style={[
-        componentStyles.authInput,
+        componentStyles.inputSimple,
         error ? componentStyles.inputError : null,
       ]}>
         <Ionicons name={icon} size={20} color={colors.neutral[500]} />
         <TextInput
           ref={ref}
-          style={componentStyles.authInputText}
+          style={componentStyles.text}
           placeholderTextColor={colors.neutral[400]}
           {...textInputProps}
         />

@@ -119,7 +119,6 @@ export default function Signup() {
             last_name: lastName.trim(),
             push_token: pushToken,
             email_verified: false,
-            onboarding_completed: false,
             is_active: true,
           });
 
@@ -210,10 +209,10 @@ export default function Signup() {
             {/* Form */}
             <View style={{ width: '100%' }}>
               {/* First Name */}
-              <View style={componentStyles.authInputContainer}>
-                <Text style={componentStyles.authInputLabel}>First Name</Text>
+              <View style={{ marginBottom: spacing[4] }}>
+                <Text style={componentStyles.globalLabel}>First Name</Text>
                 <TextInput
-                  style={componentStyles.authInput}
+                  style={componentStyles.inputSimple}
                   value={firstName}
                   onChangeText={setFirstName}
                   placeholder="Enter your first name"
@@ -223,10 +222,10 @@ export default function Signup() {
               </View>
 
               {/* Last Name */}
-              <View style={componentStyles.authInputContainer}>
-                <Text style={componentStyles.authInputLabel}>Last Name</Text>
+              <View style={{ marginBottom: spacing[4] }}>
+                <Text style={componentStyles.globalLabel}>Last Name</Text>
                 <TextInput
-                  style={componentStyles.authInput}
+                  style={componentStyles.inputSimple}
                   value={lastName}
                   onChangeText={setLastName}
                   placeholder="Enter your last name"
@@ -236,10 +235,10 @@ export default function Signup() {
               </View>
 
               {/* Email */}
-              <View style={componentStyles.authInputContainer}>
-                <Text style={componentStyles.authInputLabel}>Email</Text>
+              <View style={{ marginBottom: spacing[4] }}>
+                <Text style={componentStyles.globalLabel}>Email</Text>
                 <TextInput
-                  style={componentStyles.authInput}
+                  style={componentStyles.inputSimple}
                   value={email}
                   onChangeText={setEmail}
                   placeholder="Enter your email"
@@ -250,11 +249,11 @@ export default function Signup() {
               </View>
 
               {/* Password */}
-              <View style={componentStyles.authInputContainer}>
-                <Text style={componentStyles.authInputLabel}>Password</Text>
-                <View style={componentStyles.authInput}>
+              <View style={componentStyles.inputContainer}>
+                <Text style={componentStyles.globalLabel}>Password</Text>
+                <View style={componentStyles.inputWithIcon}>
                   <TextInput
-                    style={componentStyles.authInputText}
+                    style={componentStyles.inputWithIcon}
                     value={password}
                     onChangeText={setPassword}
                     placeholder="Enter your password"
@@ -280,11 +279,11 @@ export default function Signup() {
               </View>
 
               {/* Confirm Password */}
-              <View style={componentStyles.authInputContainer}>
-                <Text style={componentStyles.authInputLabel}>Confirm Password</Text>
-                <View style={componentStyles.authInput}>
+              <View style={componentStyles.inputContainer}>
+                <Text style={componentStyles.globalLabel}>Confirm Password</Text>
+                <View style={componentStyles.inputWithIcon}>
                   <TextInput
-                    style={componentStyles.authInputText}
+                    style={componentStyles.inputWithIcon}
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
                     placeholder="Confirm your password"
@@ -330,13 +329,13 @@ export default function Signup() {
               {/* Sign Up Button */}
               <TouchableOpacity
                 style={[
-                  componentStyles.authButton,
-                  !isFormValid() && componentStyles.authButtonDisabled
+                  componentStyles.buttonPrimary,
+                  !isFormValid() && componentStyles.buttonDisabled
                 ]}
                 onPress={handleSignup}
                 disabled={!isFormValid() || loading}
               >
-                <Text style={componentStyles.authButtonText}>
+                <Text style={componentStyles.buttonText}>
                   {loading ? 'Creating Account...' : 'Create Account'}
                 </Text>
               </TouchableOpacity>

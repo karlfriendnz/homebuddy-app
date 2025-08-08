@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
-import AuthInput from '../auth/AuthInput';
+import { UniversalInput } from '../ui';
 
 interface EmailStepProps {
   email: string;
@@ -21,7 +21,7 @@ export function EmailStep({
 }: EmailStepProps) {
   return (
     <View>
-      <AuthInput
+      <UniversalInput
         label="Email"
         icon="mail-outline"
         placeholder="Enter your email"

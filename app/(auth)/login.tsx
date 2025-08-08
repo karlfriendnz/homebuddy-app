@@ -11,6 +11,7 @@ import {
   Dimensions,
   Image,
   TextInput,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -20,8 +21,7 @@ import { supabase } from '../../lib/supabase';
 import * as Notifications from 'expo-notifications';
 import ErrorMessage from '../../components/ui/ErrorMessage';
 import { colors, componentStyles, spacing, typography } from '../../styles/global';
-import AuthInput from '../../components/auth/AuthInput';
-import AuthButton from '../../components/auth/AuthButton';
+import { UniversalButton } from '../../components/ui';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
   EmailStep, 
@@ -33,6 +33,8 @@ import {
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const isMobile = screenWidth < 768; // Mobile breakpoint
+const isTablet = screenWidth >= 768 && screenWidth < 1024; // Tablet breakpoint
+const isDesktop = screenWidth >= 1024; // Desktop breakpoint
 
 // Slideshow images for HomeBuddy - household management app
 // Using local images from the slideshow folder
@@ -80,6 +82,11 @@ export default function AuthScreen() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [emailVerified, setEmailVerified] = useState(false);
   const passwordInputRef = useRef<TextInput>(null);
+
+  // Animation states for slideshow fade transitions
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const [nextImageIndex, setNextImageIndex] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   // Pre-fill email if passed as parameter
   useEffect(() => {
@@ -139,16 +146,37 @@ export default function AuthScreen() {
     return subtitles[currentImageIndex] || subtitles[0];
   };
 
-  // Auto-advance slideshow (only on desktop)
+  // Auto-advance slideshow with fade transitions (only on desktop)
   useEffect(() => {
     if (!isMobile) {
       const interval = setInterval(() => {
-        setCurrentImageIndex((prev) => (prev + 1) % slideshowImages.length);
-      }, 5000); // Change image every 5 seconds
+        if (!isTransitioning) {
+          const nextIndex = (currentImageIndex + 1) % slideshowImages.length;
+          setNextImageIndex(nextIndex);
+          setIsTransitioning(true);
+
+          // Fade out current image (3 seconds)
+          Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 3000,
+            useNativeDriver: true,
+          }).start(() => {
+            // Change image and fade in (3 seconds)
+            setCurrentImageIndex(nextIndex);
+            Animated.timing(fadeAnim, {
+              toValue: 1,
+              duration: 3000,
+              useNativeDriver: true,
+            }).start(() => {
+              setIsTransitioning(false);
+            });
+          });
+        }
+      }, 6000); // Total cycle: 6 seconds (3s fade out + 3s fade in)
 
       return () => clearInterval(interval);
     }
-  }, [isMobile, slideshowImages.length]);
+  }, [isMobile, slideshowImages.length, currentImageIndex, isTransitioning, fadeAnim]);
 
   // Validate email format
   const validateEmail = (email: string) => {
@@ -491,7 +519,7 @@ export default function AuthScreen() {
 
   // Render email step
   const renderEmailStep = () => (
-    <View style={componentStyles.flex1}>
+    <View style={{ width: '100%' }}>
       <EmailStep
         email={email}
         emailError={emailError}
@@ -501,8 +529,8 @@ export default function AuthScreen() {
         onSubmit={handleEmailCheck}
       />
 
-      <View style={{ marginTop: spacing[6] }}>
-        <AuthButton
+      <View style={{ marginTop: spacing[8], marginBottom: spacing[4] }}>
+        <UniversalButton
           title="Continue"
           onPress={handleEmailCheck}
           loading={isLoading}
@@ -630,51 +658,92 @@ export default function AuthScreen() {
   if (isMobile) {
     return (
       <SafeAreaView style={componentStyles.safeArea} >
-        <ScrollView 
-          style={{ flex: 1, backgroundColor: colors.background }}
-          contentContainerStyle={{ 
-            paddingHorizontal: 16,
-            paddingVertical: 16
-          }}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Logo */}
-          <View style={{ alignItems: 'center', marginBottom: 16 }}>
-            <Image
-              source={require('../../assets/images/icon.png')}
-              style={{
-                width: 100,
-                height: 100,
-                resizeMode: 'contain',
-              }}
-            />
-          </View>
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+          <ScrollView 
+            style={{ flex: 1 }}
+            contentContainerStyle={{ 
+              paddingHorizontal: 16,
+              paddingVertical: 16,
+              paddingBottom: 80 // Add space for footer
+            }}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Logo */}
+            <View style={{ alignItems: 'center', marginBottom: 16 }}>
+              <Image
+                source={require('../../assets/images/icon.png')}
+                style={{
+                  width: 100,
+                  height: 100,
+                  resizeMode: 'contain',
+                }}
+              />
+            </View>
 
-          {/* Welcome Title */}
-          <View style={{ alignItems: 'center', marginBottom: 32 }}>
-            <Text style={{
-              fontSize: 32,
-              fontWeight: 'bold',
-              color: colors.text.primary,
-            }}>
-              Welcome Home
-            </Text>
-          </View>
-
-          {/* Error Message */}
-          {error && error.trim() ? (
-            <View style={{ marginBottom: 16 }}>
-              <Text style={{ color: colors.error[500], textAlign: 'center' }}>
-                {error}
+            {/* Welcome Title */}
+            <View style={{ alignItems: 'center', marginBottom: 32 }}>
+              <Text style={{
+                fontSize: 32,
+                fontWeight: 'bold',
+                color: colors.text.primary,
+              }}>
+                Welcome Home
               </Text>
             </View>
-          ) : null}
 
-          {/* Form */}
-          <View style={{ width: '100%' }}>
-            {getCurrentForm()}
+            {/* Error Message */}
+            {error && error.trim() ? (
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{ color: colors.error[500], textAlign: 'center' }}>
+                  {error}
+                </Text>
+              </View>
+            ) : null}
+
+            {/* Form */}
+            <View style={{ width: '100%' }}>
+              {getCurrentForm()}
+            </View>
+          </ScrollView>
+
+          {/* Website Link Footer */}
+          <View style={{ 
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            alignItems: 'center', 
+            paddingVertical: 16,
+            borderTopWidth: 1,
+            borderTopColor: colors.neutral[200],
+            backgroundColor: colors.background
+          }}>
+            <TouchableOpacity
+              onPress={() => {
+                if (Platform.OS === 'web') {
+                  window.open('https://homebuddy.nz', '_blank');
+                } else {
+                  // For mobile, you might want to use Linking
+                  // Linking.openURL('https://homebuddy.nz');
+                }
+              }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4
+              }}
+            >
+              <Ionicons name="desktop-outline" size={12} color={colors.text.secondary} />
+              <Text style={{
+                fontSize: 10,
+                color: colors.text.secondary,
+                textDecorationLine: 'underline'
+              }}>
+                For more visit HomeBuddy.nz
+              </Text>
+            </TouchableOpacity>
           </View>
-        </ScrollView>
+        </View>
       </SafeAreaView>
     );
   }
@@ -687,52 +756,41 @@ export default function AuthScreen() {
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={componentStyles.flex1}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? (isTablet ? 100 : 0) : 20}
         >
           <ScrollView
             contentContainerStyle={[
               componentStyles.flex1,
               { 
                 justifyContent: 'center',
-                alignItems: 'center'
+                alignItems: 'center',
+                paddingVertical: spacing[4],
+                paddingBottom: 80 // Add space for footer
               }
             ]}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           >
-            {/* Logo Space */}
-            <View style={{
-              width: 80,
-              height: 80,
-              borderRadius: 40,
-              backgroundColor: colors.primary[100],
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: spacing[6],
-            }}>
-              <Text style={{
-                fontSize: 32,
-                color: colors.primary[500],
-                fontWeight: 'bold',
-              }}>
-                🏠
-              </Text>
+            {/* Logo */}
+            <View style={{ alignItems: 'center', marginBottom: spacing[6] }}>
+              <Image
+                source={require('../../assets/images/icon.png')}
+                style={{
+                  width: 100,
+                  height: 100,
+                  resizeMode: 'contain',
+                }}
+              />
             </View>
 
-            {/* Header */}
+            {/* Welcome Title */}
             <View style={{ alignItems: 'center', marginBottom: spacing[8] }}>
               <Text style={{
-                fontSize: 28,
+                fontSize: 32,
                 fontWeight: 'bold',
                 color: colors.text.primary,
-                marginBottom: spacing[2],
               }}>
-                {flowContent.title}
-              </Text>
-              <Text style={{
-                fontSize: 16,
-                color: colors.text.secondary,
-                textAlign: 'center',
-              }}>
-                {flowContent.subtitle}
+                Welcome Home
               </Text>
             </View>
 
@@ -740,19 +798,80 @@ export default function AuthScreen() {
             <ErrorMessage message={error} visible={!!error} />
 
             {/* Form */}
-            <View style={{ width: '100%', maxWidth: 400 }}>
+            <View style={{ width: '100%', maxWidth: 400, paddingBottom: spacing[8] }}>
               {getCurrentForm()}
             </View>
           </ScrollView>
+
+          {/* Website Link Footer */}
+          <View style={{ 
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            alignItems: 'center', 
+            paddingVertical: 16,
+            borderTopWidth: 1,
+            borderTopColor: colors.neutral[200],
+            backgroundColor: colors.background
+          }}>
+            <TouchableOpacity
+              onPress={() => {
+                if (Platform.OS === 'web') {
+                  window.open('https://homebuddy.nz', '_blank');
+                } else {
+                  // For mobile, you might want to use Linking
+                  // Linking.openURL('https://homebuddy.nz');
+                }
+              }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4
+              }}
+            >
+              <Ionicons name="desktop-outline" size={12} color={colors.text.secondary} />
+              <Text style={{
+                fontSize: 12,
+                color: colors.text.secondary,
+                textDecorationLine: 'underline'
+              }}>
+                For more visit HomeBuddy.nz
+              </Text>
+            </TouchableOpacity>
+          </View>
         </KeyboardAvoidingView>
       </View>
 
       {/* Right Panel - Image Slideshow (Desktop Only) */}
       <View style={componentStyles.loginSlideshowPanel}>
-        {/* Current Image */}
-        <Image
+        {/* Background Image (Current) */}
+        <Animated.Image
           source={slideshowImages[currentImageIndex]}
-          style={[componentStyles.loginSlideshowImage, { resizeMode: 'cover' }]}
+          style={[
+            componentStyles.loginSlideshowImage, 
+            { 
+              resizeMode: 'cover',
+              opacity: fadeAnim
+            }
+          ]}
+        />
+        
+        {/* Foreground Image (Next) - Cross-fades with background */}
+        <Animated.Image
+          source={slideshowImages[nextImageIndex]}
+          style={[
+            componentStyles.loginSlideshowImage,
+            { 
+              resizeMode: 'cover',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              opacity: Animated.subtract(1, fadeAnim)
+            }
+          ]}
         />
         
         {/* Signout Button - Top Right Corner (Only show when user is logged in) */}
@@ -787,23 +906,6 @@ export default function AuthScreen() {
             </Text>
           </TouchableOpacity>
         )}
-        
-        {/* Content Overlay - Removed text */}
-
-        {/* Slideshow Indicators */}
-        <View style={componentStyles.loginSlideshowIndicators}>
-          {slideshowImages.map((_, index) => (
-            <View
-              key={index}
-              style={[
-                componentStyles.loginSlideshowDot,
-                index === currentImageIndex 
-                  ? componentStyles.loginSlideshowDotActive 
-                  : componentStyles.loginSlideshowDotInactive
-              ]}
-            />
-          ))}
-        </View>
       </View>
     </View>
   );

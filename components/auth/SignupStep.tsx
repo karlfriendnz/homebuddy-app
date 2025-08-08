@@ -99,11 +99,11 @@ export function SignupStep({
         </View>
       </View>
 
-      <View style={[componentStyles.authInputContainer, { marginBottom: spacing[4] }]}>
-        <Text style={componentStyles.authInputLabel}>Email</Text>
-        <View style={[componentStyles.authInput, { backgroundColor: colors.neutral[100] }]}>
+      <View style={[componentStyles.inputContainer, { marginBottom: spacing[4] }]}>
+        <Text style={componentStyles.inputLabel}>Email</Text>
+        <View style={[componentStyles.inputSimple, { backgroundColor: colors.neutral[100] }]}>
           <Ionicons name="mail-outline" size={20} color={colors.neutral[500]} />
-          <Text style={[componentStyles.authInputText, { color: colors.text.primary }]}>
+          <Text style={[componentStyles.text, { color: colors.text.primary }]}>
             {email}
           </Text>
         </View>

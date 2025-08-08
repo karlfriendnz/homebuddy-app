@@ -2,8 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import AuthInput from '../auth/AuthInput';
-import AuthButton from '../auth/AuthButton';
+import { UniversalInput, UniversalButton } from '../ui';
 import { componentStyles, colors, spacing, typography } from '../../styles/global';
 
 interface LoginStepProps {
@@ -43,18 +42,39 @@ export function LoginStep({
     <View>
       {/* Show email display when verified */}
       {emailVerified && (
-        <View style={[componentStyles.authInputContainer, { marginBottom: spacing[4] }]}>
-          <Text style={componentStyles.authInputLabel}>Email</Text>
-          <View style={[componentStyles.authInput, { backgroundColor: colors.neutral[100] }]}>
-            <Ionicons name="mail-outline" size={20} color={colors.neutral[500]} />
-            <Text style={[componentStyles.authInputText, { color: colors.text.primary }]}>
+        <View style={{ marginBottom: spacing[4] }}>
+          <Text style={{
+            fontSize: 14,
+            fontWeight: '600',
+            color: colors.text.primary,
+            marginBottom: spacing[2],
+          }}>
+            Email
+          </Text>
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            borderWidth: 1,
+            borderColor: colors.neutral[200],
+            borderRadius: 6,
+            paddingHorizontal: spacing[3],
+            height: 44,
+            backgroundColor: colors.neutral[100],
+          }}>
+            <Ionicons name="mail-outline" size={18} color={colors.neutral[500]} style={{ marginRight: spacing[2] }} />
+            <Text style={{
+              flex: 1,
+              fontSize: 16,
+              color: colors.text.primary,
+              lineHeight: 20,
+            }}>
               {email}
             </Text>
           </View>
         </View>
       )}
 
-      <AuthInput
+      <UniversalInput
         label="Password"
         icon="lock-closed-outline"
         placeholder="Enter your password"
@@ -87,11 +107,12 @@ export function LoginStep({
         </Text>
       </TouchableOpacity>
 
-      <AuthButton
+      <UniversalButton
         title="Sign In"
         onPress={onLogin}
         loading={isLoading}
         disabled={isLoading}
+        style={{ marginTop: spacing[4] }}
       />
 
       <View style={[componentStyles.itemsCenter, { marginTop: spacing[4] }]}>

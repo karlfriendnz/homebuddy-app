@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
+import { globalSignOut } from '../lib/auth-utils';
 
 interface AuthContextType {
   user: User | null;
@@ -32,16 +33,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('AuthContext: Sign out error:', error);
-        throw error;
-      }
+      console.log('🔄 AuthContext sign out initiated...');
+      
       // Clear the user state immediately
       setUser(null);
+      setLoading(true);
+      
+      // Use the global sign out function with redirect
+      await globalSignOut('/(auth)/login');
+      
+      // Ensure user state is cleared
+      setUser(null);
+      setLoading(false);
+      
+      console.log('✅ AuthContext sign out complete');
     } catch (error) {
-      console.error('AuthContext: Sign out error:', error);
-      throw error;
+      console.error('❌ AuthContext sign out error:', error);
+      // Even if there's an error, clear user state
+      setUser(null);
+      setLoading(false);
     }
   };
 

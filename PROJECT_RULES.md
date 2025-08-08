@@ -36,6 +36,41 @@ const styles = StyleSheet.create({
 });
 ```
 
+### **Global Input Styling Rules (MANDATORY)**
+
+**✅ REQUIRED:**
+- All input components MUST use `UniversalInput` from `../components/ui`
+- All input containers MUST have consistent 44px height
+- All inputs MUST have no focus styling (no borders, outlines, or color changes)
+- All inputs MUST use the global color system
+
+**❌ FORBIDDEN:**
+- Creating custom input components without using UniversalInput
+- Using different input heights (must be 44px)
+- Adding focus styling or color changes on input focus
+- Using hardcoded input styling
+
+### **Input Component Usage (REQUIRED)**
+```typescript
+// ✅ CORRECT - Always use UniversalInput
+import { UniversalInput } from '../components/ui';
+
+<UniversalInput
+  label="Email"
+  icon="mail-outline"
+  placeholder="Enter your email"
+  value={email}
+  onChangeText={setEmail}
+  error={emailError}
+/>
+
+// ❌ WRONG - Never create custom inputs
+<TextInput 
+  style={{ height: 50, borderColor: '#blue' }} // ❌ Custom styling
+  placeholder="Enter email"
+/>
+```
+
 ### **Usage Examples**
 
 **✅ CORRECT - Using Global Styles:**
@@ -692,6 +727,47 @@ When updating existing image upload code:
 4. Update error handling to be user-friendly
 5. Test thoroughly with different image types
 6. Update documentation
+
+---
+
+## 📅 Global Annual Date Picker Rules (MANDATORY)
+
+**✅ REQUIRED:**
+- Always use the shared `DatePicker` (alias of `DateOfBirthPicker`) from `components/ui` for any annual date fields (e.g., date of birth, anniversaries, year-based dates)
+- Value MUST be a string in `YYYY-MM-DD` format
+- Component behavior MUST match the global implementation:
+  - Web: dropdown selects for Day/Month/Year
+  - iOS/Android: touchable lists in modals
+  - Changing one part (day/month/year) must NOT mutate the others
+  - Output is manually formatted `YYYY-MM-DD` (no `Date#toISOString`) to avoid timezone shifts
+  - Initializes from prop once and resets when cleared; no hidden fallbacks
+
+**Import Pattern (REQUIRED):**
+```ts
+// Use the global DatePicker everywhere
+import { DatePicker } from '../../components/ui';
+
+<DatePicker
+  label="Date of Birth"
+  value={dob} // 'YYYY-MM-DD' or ''
+  onChange={setDob}
+  required
+  error={dobError}
+/>
+```
+
+**❌ FORBIDDEN:**
+- Using native HTML `<input type="date">` or platform pickers for annual dates
+- Using ad-hoc `TextInput` triplets for day/month/year
+- Using `new Date(...).toISOString()` to format annual dates (introduces timezone bugs)
+- Auto-filling missing parts (e.g., defaulting month/year when only day changes)
+
+** allowed technical details:**
+- If a screen needs month-only or year-only selection, create a focused wrapper around the same shared logic (no `Date#toISOString`).
+
+**Migration (REQUIRED):**
+- Replace any custom annual date logic with `DatePicker`
+- Ensure state uses `YYYY-MM-DD` strings and validation respects required fields per screen
 
 ---
 
